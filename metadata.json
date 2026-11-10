@@ -1,0 +1,6 @@
+{
+  "name": "MyMari",
+  "description": "Personal Student Finance Management App by Divine Pezari. Keep Your Money in Mind.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
