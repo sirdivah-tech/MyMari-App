@@ -24,7 +24,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -46,11 +45,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.ai.VoiceParsedTransaction
 import com.example.data.model.FinanceConstants
+import com.example.ui.i18n.MyMariI18n
 import com.example.ui.theme.EmeraldBrand
-import com.example.ui.theme.ForestGreenDark
-import com.example.ui.theme.SoftMintBorder
-import com.example.ui.theme.SoftMintContainer
-import com.example.ui.theme.SoftMintSurface
+import com.example.ui.theme.MyMariTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -69,6 +66,8 @@ fun AddTransactionSheet(
     onSubmitIncome: (amount: Double, source: String, method: String, desc: String, notes: String, date: String, time: String) -> Unit,
     onSubmitExpense: (amount: Double, category: String, method: String, desc: String, notes: String, date: String, time: String) -> Unit
 ) {
+    val colors = MyMariTheme.colors
+    val strings = MyMariI18n.strings
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val sdfTime = SimpleDateFormat("HH:mm", Locale.getDefault())
@@ -84,7 +83,6 @@ fun AddTransactionSheet(
     var timeText by remember { mutableStateOf(sdfTime.format(Date())) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Auto-fill form when Gemini finishes transcribing & parsing voice audio
     LaunchedEffect(voiceParsed) {
         if (voiceParsed != null) {
             voiceParsed.amount?.let { amt ->
@@ -109,7 +107,7 @@ fun AddTransactionSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color.White,
+        containerColor = colors.cardBg,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
         Column(
@@ -124,43 +122,37 @@ fun AddTransactionSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (isIncome) "Money You Got" else "Money You Spent",
+                    text = if (isIncome) strings.moneyYouGot else strings.moneyYouSpent,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = colors.textPrimary
                 )
                 IconButton(onClick = onDismiss) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        contentDescription = strings.close,
+                        tint = colors.textSecondary
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Voice AI Mic Bar (Gemini 3.5 Transcribe)
             VoiceTranscribeBar(
                 isTranscribing = isTranscribing,
                 transcriptText = voiceTranscript,
                 errorMessage = voiceError,
-                promptHint = if (isIncome) {
-                    "Tap mic & say e.g. \"Got $50 from Mom on Mukuru\""
-                } else {
-                    "Tap mic & say e.g. \"Spent $3 on lunch via EcoCash\""
-                },
+                promptHint = if (isIncome) strings.voiceTapMicIncome else strings.voiceTapMicExpense,
                 onAudioCaptured = onVoiceAudioCaptured
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Amount Field
             Text(
-                text = "How much?",
+                text = strings.howMuch,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = colors.textSecondary
             )
             Spacer(modifier = Modifier.height(6.dp))
             OutlinedTextField(
@@ -175,7 +167,7 @@ fun AddTransactionSheet(
                         text = currencySymbol,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = EmeraldBrand,
+                        color = colors.accentPrimary,
                         modifier = Modifier.padding(start = 12.dp)
                     )
                 },
@@ -190,10 +182,10 @@ fun AddTransactionSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = if (isIncome) "Where did the money come from?" else "What did you spend it on?",
+                text = if (isIncome) strings.whereMoneyCameFrom else strings.whatDidYouSpendOn,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = colors.textSecondary
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -205,23 +197,24 @@ fun AddTransactionSheet(
             ) {
                 options.forEach { opt ->
                     val isSelected = selectedCategoryOrSource == opt
+                    val displayOpt = if (isIncome) strings.sourceLabel(opt) else strings.categoryLabel(opt)
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSelected) SoftMintContainer else SoftMintSurface)
+                            .background(if (isSelected) colors.softContainer else colors.softSurface)
                             .border(
                                 1.dp,
-                                if (isSelected) EmeraldBrand else SoftMintBorder,
+                                if (isSelected) colors.accentPrimary else colors.softBorder,
                                 RoundedCornerShape(12.dp)
                             )
                             .clickable { selectedCategoryOrSource = opt }
                             .padding(horizontal = 12.dp, vertical = 7.dp)
                     ) {
                         Text(
-                            text = opt,
+                            text = displayOpt,
                             fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) ForestGreenDark else MaterialTheme.colorScheme.onSurface
+                            color = if (isSelected) colors.accentText else colors.textPrimary
                         )
                     }
                 }
@@ -230,10 +223,10 @@ fun AddTransactionSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "How was it paid?",
+                text = strings.howWasItPaid,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = colors.textSecondary
             )
             Spacer(modifier = Modifier.height(8.dp))
             FlowRow(
@@ -246,20 +239,20 @@ fun AddTransactionSheet(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSelected) EmeraldBrand else SoftMintSurface)
+                            .background(if (isSelected) EmeraldBrand else colors.softSurface)
                             .border(
                                 1.dp,
-                                if (isSelected) EmeraldBrand else SoftMintBorder,
+                                if (isSelected) EmeraldBrand else colors.softBorder,
                                 RoundedCornerShape(12.dp)
                             )
                             .clickable { selectedPaymentMethod = method }
                             .padding(horizontal = 12.dp, vertical = 7.dp)
                     ) {
                         Text(
-                            text = method,
+                            text = strings.paymentLabel(method),
                             fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                            color = if (isSelected) Color.White else colors.textPrimary
                         )
                     }
                 }
@@ -268,16 +261,16 @@ fun AddTransactionSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Short description",
+                text = strings.shortDescription,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = colors.textSecondary
             )
             Spacer(modifier = Modifier.height(6.dp))
             OutlinedTextField(
                 value = descriptionText,
                 onValueChange = { descriptionText = it },
-                placeholder = { Text(if (isIncome) "e.g. Allowance from Mom" else "e.g. Lunch at canteen") },
+                placeholder = { Text(if (isIncome) strings.placeholderIncomeDesc else strings.placeholderExpenseDesc) },
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -293,10 +286,10 @@ fun AddTransactionSheet(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Date",
+                        text = strings.dateLabel,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = colors.textSecondary
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
@@ -310,10 +303,10 @@ fun AddTransactionSheet(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Time",
+                        text = strings.timeLabel,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = colors.textSecondary
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
@@ -329,16 +322,16 @@ fun AddTransactionSheet(
             Spacer(modifier = Modifier.height(14.dp))
 
             Text(
-                text = "Extra note (Optional)",
+                text = strings.extraNoteOptional,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = colors.textSecondary
             )
             Spacer(modifier = Modifier.height(6.dp))
             OutlinedTextField(
                 value = notesText,
                 onValueChange = { notesText = it },
-                placeholder = { Text("e.g. Shared groceries with roommate") },
+                placeholder = { Text(strings.placeholderExtraNote) },
                 maxLines = 3,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp)
@@ -348,7 +341,7 @@ fun AddTransactionSheet(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = errorMessage ?: "",
-                    color = Color(0xFFDC2626),
+                    color = colors.expenseRed,
                     fontSize = 13.sp
                 )
             }
@@ -359,7 +352,7 @@ fun AddTransactionSheet(
                 onClick = {
                     val amount = amountText.toDoubleOrNull()
                     if (amount == null || amount <= 0) {
-                        errorMessage = "Please enter an amount bigger than 0"
+                        errorMessage = strings.errorAmountPositive
                         return@Button
                     }
                     if (isIncome) {
@@ -395,7 +388,7 @@ fun AddTransactionSheet(
                 )
             ) {
                 Text(
-                    text = if (isIncome) "Save Money In" else "Save What I Spent",
+                    text = if (isIncome) strings.saveMoneyIn else strings.saveWhatISpent,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )

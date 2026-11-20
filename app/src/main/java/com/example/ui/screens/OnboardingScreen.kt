@@ -25,6 +25,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -49,25 +52,27 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.FinanceConstants
-import com.example.ui.theme.CanvasBgLight
+import com.example.data.preferences.AppLanguage
+import com.example.data.preferences.ThemeMode
+import com.example.ui.i18n.MyMariI18n
 import com.example.ui.theme.EmeraldBrand
-import com.example.ui.theme.ForestGreenDark
-import com.example.ui.theme.NeonLimeSoft
-import com.example.ui.theme.SoftMintBorder
-import com.example.ui.theme.SoftMintContainer
-import com.example.ui.theme.SoftMintSurface
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.MyMariTheme
 
 @Composable
 fun OnboardingScreen(
     initialName: String = "Student",
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    onThemeModeChange: (ThemeMode) -> Unit = {},
+    appLanguage: AppLanguage = AppLanguage.ENGLISH,
+    onAppLanguageChange: (AppLanguage) -> Unit = {},
     onComplete: (name: String, university: String, currency: String, symbol: String, startingBal: Double, budget: Double, loadDemo: Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = MyMariTheme.colors
+    val strings = MyMariI18n.strings
     var step by remember { mutableStateOf(1) }
 
-    var studentName by remember(initialName) { mutableStateOf(initialName.ifBlank { "Student" }) }
+    var studentName by remember(initialName) { mutableStateOf(initialName.ifBlank { strings.studentDefaultName }) }
     var university by remember { mutableStateOf("University") }
     var selectedCurrency by remember { mutableStateOf(FinanceConstants.CURRENCIES.first()) }
     var startingBalanceText by remember { mutableStateOf("250.00") }
@@ -78,7 +83,7 @@ fun OnboardingScreen(
             .fillMaxSize()
             .background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(CanvasBgLight, SoftMintSurface)
+                    colors = listOf(colors.canvasBg, colors.softSurface)
                 )
             )
             .windowInsetsPadding(WindowInsets.safeDrawing)
@@ -90,40 +95,103 @@ fun OnboardingScreen(
                     .padding(24.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "MyMari",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = ForestGreenDark
-                    )
-                    Text(
-                        text = "Student Helper",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = ForestGreenDark,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(SoftMintContainer)
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = FinanceConstants.APP_NAME,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.accentText
+                        )
+
+                        val themeIcon = when (themeMode) {
+                            ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                            ThemeMode.LIGHT -> Icons.Default.LightMode
+                            ThemeMode.DARK -> Icons.Default.DarkMode
+                        }
+                        val themeLabel = when (themeMode) {
+                            ThemeMode.SYSTEM -> strings.themeSystem
+                            ThemeMode.LIGHT -> strings.themeLight
+                            ThemeMode.DARK -> strings.themeDark
+                        }
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(colors.softContainer)
+                                .border(1.dp, colors.softBorder, RoundedCornerShape(12.dp))
+                                .clickable {
+                                    val next = when (themeMode) {
+                                        ThemeMode.SYSTEM -> ThemeMode.LIGHT
+                                        ThemeMode.LIGHT -> ThemeMode.DARK
+                                        ThemeMode.DARK -> ThemeMode.SYSTEM
+                                    }
+                                    onThemeModeChange(next)
+                                }
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = themeIcon,
+                                contentDescription = strings.appThemeTitle,
+                                tint = colors.accentText,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = themeLabel,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = colors.accentText
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        AppLanguage.entries.forEach { lang ->
+                            val selected = appLanguage == lang
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (selected) EmeraldBrand else colors.cardBg)
+                                    .border(
+                                        1.dp,
+                                        if (selected) EmeraldBrand else colors.softBorder,
+                                        RoundedCornerShape(12.dp)
+                                    )
+                                    .clickable { onAppLanguageChange(lang) }
+                                    .padding(vertical = 7.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = lang.nativeLabel,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (selected) Color.White else colors.textPrimary
+                                )
+                            }
+                        }
+                    }
                 }
 
-                // Light pastel tilted showcase cards
+                // Tilted showcase cards
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(290.dp),
+                        .height(270.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = null,
-                        tint = EmeraldBrand.copy(alpha = 0.35f),
+                        tint = colors.accentPrimary.copy(alpha = 0.35f),
                         modifier = Modifier
                             .size(16.dp)
                             .offset(x = (-90).dp, y = (-70).dp)
@@ -131,7 +199,7 @@ fun OnboardingScreen(
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = null,
-                        tint = EmeraldBrand.copy(alpha = 0.45f),
+                        tint = colors.accentPrimary.copy(alpha = 0.45f),
                         modifier = Modifier
                             .size(20.dp)
                             .offset(x = 110.dp, y = 50.dp)
@@ -142,10 +210,10 @@ fun OnboardingScreen(
                             .offset(x = (-24).dp, y = (-22).dp)
                             .rotate(-14f)
                             .width(168.dp)
-                            .height(206.dp)
+                            .height(198.dp)
                             .clip(RoundedCornerShape(24.dp))
-                            .background(NeonLimeSoft)
-                            .border(1.dp, SoftMintBorder, RoundedCornerShape(24.dp))
+                            .background(colors.limeCardBg)
+                            .border(1.dp, colors.softBorder, RoundedCornerShape(24.dp))
                             .padding(16.dp)
                     ) {
                         Column(
@@ -153,28 +221,28 @@ fun OnboardingScreen(
                             verticalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "WALLET",
+                                text = strings.onboardingWalletTag,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = ForestGreenDark
+                                color = colors.accentText
                             )
                             Column {
                                 Text(
-                                    text = "Money Left",
+                                    text = strings.onboardingMoneyLeftLabel,
                                     fontSize = 11.sp,
-                                    color = TextSecondary
+                                    color = colors.textSecondary
                                 )
                                 Text(
                                     text = "$175.00",
                                     fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = ForestGreenDark
+                                    color = colors.accentText
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Saved $50.00",
+                                    text = strings.onboardingSavedExample,
                                     fontSize = 11.sp,
-                                    color = EmeraldBrand,
+                                    color = colors.accentPrimary,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
@@ -186,10 +254,10 @@ fun OnboardingScreen(
                             .offset(x = 24.dp, y = 20.dp)
                             .rotate(-6f)
                             .width(172.dp)
-                            .height(208.dp)
+                            .height(200.dp)
                             .clip(RoundedCornerShape(24.dp))
-                            .background(SoftMintContainer)
-                            .border(1.5.dp, EmeraldBrand.copy(alpha = 0.35f), RoundedCornerShape(24.dp))
+                            .background(colors.softContainer)
+                            .border(1.5.dp, colors.accentPrimary.copy(alpha = 0.35f), RoundedCornerShape(24.dp))
                             .padding(16.dp)
                     ) {
                         Column(
@@ -207,30 +275,30 @@ fun OnboardingScreen(
                                         .background(EmeraldBrand)
                                 )
                                 Text(
-                                    text = "MyMari",
+                                    text = FinanceConstants.APP_NAME,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = ForestGreenDark
+                                    color = colors.accentText
                                 )
                             }
                             Column {
                                 Text(
-                                    text = "Money In",
+                                    text = strings.onboardingMoneyInLabel,
                                     fontSize = 11.sp,
-                                    color = TextSecondary
+                                    color = colors.textSecondary
                                 )
                                 Text(
                                     text = "$300.00",
                                     fontSize = 22.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = ForestGreenDark
+                                    color = colors.accentText
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "Mukuru • EcoCash",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = EmeraldBrand
+                                    color = colors.accentPrimary
                                 )
                             }
                         }
@@ -239,23 +307,23 @@ fun OnboardingScreen(
 
                 Column {
                     Text(
-                        text = "Simple money\ntracking made\nfor students",
-                        fontSize = 31.sp,
+                        text = strings.onboardingHeroTitle,
+                        fontSize = 30.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
-                        lineHeight = 37.sp
+                        color = colors.textPrimary,
+                        lineHeight = 36.sp
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
-                        text = "Keep your money in mind. Track Mukuru, EcoCash, food, transport & rent without any confusing words.",
+                        text = strings.onboardingHeroSubtitle,
                         fontSize = 14.sp,
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         lineHeight = 20.sp
                     )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(22.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -263,8 +331,8 @@ fun OnboardingScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Try Sample Data",
-                            color = EmeraldBrand,
+                            text = strings.onboardingTryDemo,
+                            color = colors.accentPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier
@@ -286,7 +354,7 @@ fun OnboardingScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = "Get Started",
+                                contentDescription = strings.onboardingStartBtn,
                                 tint = Color.White,
                                 modifier = Modifier.size(26.dp)
                             )
@@ -304,26 +372,26 @@ fun OnboardingScreen(
             ) {
                 Column {
                     Text(
-                        text = "Quick Setup",
+                        text = strings.onboardingQuickSetup,
                         fontSize = 26.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
 
                     Text(
-                        text = "Takes 30 seconds — you can change this anytime.",
+                        text = strings.onboardingSetupSub,
                         fontSize = 13.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    Text("Your Name", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                    Text(strings.onboardingYourName, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
                     Spacer(modifier = Modifier.height(4.dp))
                     OutlinedTextField(
                         value = studentName,
                         onValueChange = { studentName = it },
-                        placeholder = { Text("e.g. Tafadzwa or Divine") },
+                        placeholder = { Text(strings.onboardingNamePlaceholder) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp)
@@ -331,12 +399,12 @@ fun OnboardingScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    Text("School / University", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                    Text(strings.onboardingSchool, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
                     Spacer(modifier = Modifier.height(4.dp))
                     OutlinedTextField(
                         value = university,
                         onValueChange = { university = it },
-                        placeholder = { Text("e.g. University of Zimbabwe") },
+                        placeholder = { Text(strings.onboardingSchoolPlaceholder) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp)
@@ -344,7 +412,7 @@ fun OnboardingScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    Text("Your Currency", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                    Text(strings.onboardingCurrency, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -356,8 +424,8 @@ fun OnboardingScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isSel) EmeraldBrand else Color.White)
-                                    .border(1.dp, if (isSel) EmeraldBrand else SoftMintBorder, RoundedCornerShape(12.dp))
+                                    .background(if (isSel) EmeraldBrand else colors.cardBg)
+                                    .border(1.dp, if (isSel) EmeraldBrand else colors.softBorder, RoundedCornerShape(12.dp))
                                     .clickable { selectedCurrency = cur }
                                     .padding(vertical = 10.dp),
                                 contentAlignment = Alignment.Center
@@ -366,7 +434,7 @@ fun OnboardingScreen(
                                     text = cur.code,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isSel) Color.White else TextPrimary
+                                    color = if (isSel) Color.White else colors.textPrimary
                                 )
                             }
                         }
@@ -375,10 +443,10 @@ fun OnboardingScreen(
                     Spacer(modifier = Modifier.height(14.dp))
 
                     Text(
-                        text = "How much money do you have right now? (${selectedCurrency.symbol.trim()})",
+                        text = String.format(strings.onboardingMoneyNow, selectedCurrency.symbol.trim()),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     OutlinedTextField(
@@ -393,10 +461,10 @@ fun OnboardingScreen(
                     Spacer(modifier = Modifier.height(14.dp))
 
                     Text(
-                        text = "Monthly spending limit (${selectedCurrency.symbol.trim()})",
+                        text = String.format(strings.onboardingMonthlyLimit, selectedCurrency.symbol.trim()),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     OutlinedTextField(
@@ -417,7 +485,7 @@ fun OnboardingScreen(
                             val startBal = startingBalanceText.toDoubleOrNull() ?: 0.0
                             val budget = monthlyBudgetText.toDoubleOrNull() ?: 300.0
                             onComplete(
-                                studentName.ifBlank { "Student" },
+                                studentName.ifBlank { strings.studentDefaultName },
                                 university.ifBlank { "University" },
                                 selectedCurrency.code,
                                 selectedCurrency.symbol,
@@ -437,7 +505,7 @@ fun OnboardingScreen(
                         )
                     ) {
                         Text(
-                            text = "Start Tracking My Money",
+                            text = strings.onboardingStartBtn,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -451,10 +519,10 @@ fun OnboardingScreen(
                             .fillMaxWidth()
                             .height(48.dp),
                         shape = RoundedCornerShape(18.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ForestGreenDark)
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.accentText)
                     ) {
                         Text(
-                            text = "Load Sample Student Data First",
+                            text = strings.onboardingLoadDemoBtn,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
                         )

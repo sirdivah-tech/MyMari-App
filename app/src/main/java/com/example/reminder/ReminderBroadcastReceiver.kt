@@ -3,17 +3,23 @@ package com.example.reminder
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.example.data.preferences.AppPreferencesRepository
+import com.example.ui.i18n.stringsForLanguage
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 
 class ReminderBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val type = intent.getStringExtra(ReminderScheduler.EXTRA_TYPE) ?: ReminderScheduler.TYPE_EVENING
+        val lang = runBlocking { AppPreferencesRepository(context.applicationContext).appLanguage.first() }
+        val strings = stringsForLanguage(lang)
 
         if (type == ReminderScheduler.TYPE_MORNING) {
             NotificationHelper.showNotification(
                 context = context,
                 notificationId = NotificationHelper.NOTIFICATION_ID_MORNING,
-                title = "Good morning from MyMari!",
-                message = "Check your remaining balance and today's budget before you start your day."
+                title = strings.reminderMorningTitle,
+                message = strings.reminderMorningMsg
             )
             // Re-arm for next day
             ReminderScheduler.scheduleDailyReminder(context, ReminderScheduler.TYPE_MORNING, 7, 30, true)
@@ -21,8 +27,8 @@ class ReminderBroadcastReceiver : BroadcastReceiver() {
             NotificationHelper.showNotification(
                 context = context,
                 notificationId = NotificationHelper.NOTIFICATION_ID_EVENING,
-                title = "Time for your MyMari check-in!",
-                message = "Have you recorded everything you spent or received today? Review your money before you sleep."
+                title = strings.reminderEveningTitle,
+                message = strings.reminderEveningMsg
             )
             // Re-arm for next day
             ReminderScheduler.scheduleDailyReminder(context, ReminderScheduler.TYPE_EVENING, 20, 0, true)

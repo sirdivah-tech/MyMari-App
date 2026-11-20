@@ -50,15 +50,9 @@ import com.example.data.remote.TransactionDoc
 import com.example.ui.FinanceUiState
 import com.example.ui.components.TransactionRow
 import com.example.ui.components.VoiceTranscribeBar
-import com.example.ui.theme.CanvasBgLight
+import com.example.ui.i18n.MyMariI18n
 import com.example.ui.theme.EmeraldBrand
-import com.example.ui.theme.ForestGreenDark
-import com.example.ui.theme.IncomeGreen
-import com.example.ui.theme.SoftMintBorder
-import com.example.ui.theme.SoftMintContainer
-import com.example.ui.theme.SoftMintSurface
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.MyMariTheme
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -78,6 +72,8 @@ fun DiaryScreen(
     onDeleteTransaction: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = MyMariTheme.colors
+    val strings = MyMariI18n.strings
     val currency = uiState.userProfile.currencySymbol
     val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     val sdfDayName = SimpleDateFormat("EEEE, d MMMM", Locale.getDefault())
@@ -104,10 +100,9 @@ fun DiaryScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(CanvasBgLight),
+            .background(colors.canvasBg),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Title Header
         item {
             Column(
                 modifier = Modifier
@@ -115,20 +110,19 @@ fun DiaryScreen(
                     .padding(horizontal = 20.dp, vertical = 10.dp)
             ) {
                 Text(
-                    text = "My Money Diary",
+                    text = strings.diaryTitle,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
                 Text(
-                    text = "See what you got and spent each day",
+                    text = strings.diarySubtitle,
                     fontSize = 13.sp,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
         }
 
-        // Horizontal Date Selector (Last 14 days)
         item {
             val dateList = remember {
                 val list = mutableListOf<Date>()
@@ -151,10 +145,10 @@ fun DiaryScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(16.dp))
-                            .background(if (isSelected) EmeraldBrand else SoftMintSurface)
+                            .background(if (isSelected) EmeraldBrand else colors.softSurface)
                             .border(
                                 1.dp,
-                                if (isSelected) EmeraldBrand else SoftMintBorder,
+                                if (isSelected) EmeraldBrand else colors.softBorder,
                                 RoundedCornerShape(16.dp)
                             )
                             .clickable { onDateSelected(dStr) }
@@ -165,7 +159,7 @@ fun DiaryScreen(
                             text = sdfShort.format(date),
                             fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) Color.White else TextPrimary,
+                            color = if (isSelected) Color.White else colors.textPrimary,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -173,15 +167,14 @@ fun DiaryScreen(
             }
         }
 
-        // Selected Day Summary Card
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .border(1.dp, SoftMintBorder, RoundedCornerShape(22.dp)),
+                    .border(1.dp, colors.softBorder, RoundedCornerShape(22.dp)),
                 shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = colors.cardBg),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -189,7 +182,7 @@ fun DiaryScreen(
                         text = fullDateHeader,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -200,43 +193,43 @@ fun DiaryScreen(
                     ) {
                         Column {
                             Text(
-                                text = "Money In",
+                                text = strings.moneyIn,
                                 fontSize = 11.sp,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                             Text(
                                 text = "+$currency${String.format(Locale.US, "%,.2f", dayIncome)}",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = IncomeGreen
+                                color = colors.incomeGreen
                             )
                         }
 
                         Column {
                             Text(
-                                text = "Money Out",
+                                text = strings.moneyOut,
                                 fontSize = 11.sp,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                             Text(
                                 text = "-$currency${String.format(Locale.US, "%,.2f", dayExpense)}",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (dayExpense > 0) Color(0xFFDC2626) else TextPrimary
+                                color = if (dayExpense > 0) colors.expenseRed else colors.textPrimary
                             )
                         }
 
                         Column {
                             Text(
-                                text = "Today's Difference",
+                                text = strings.todaysDifference,
                                 fontSize = 11.sp,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                             Text(
                                 text = "${if (dayDifference >= 0) "+" else ""}$currency${String.format(Locale.US, "%,.2f", dayDifference)}",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (dayDifference >= 0) IncomeGreen else Color(0xFFDC2626)
+                                color = if (dayDifference >= 0) colors.incomeGreen else colors.expenseRed
                             )
                         }
                     }
@@ -244,15 +237,14 @@ fun DiaryScreen(
             }
         }
 
-        // Personal Diary Note + Speak with Voice AI
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .border(1.dp, SoftMintBorder, RoundedCornerShape(20.dp)),
+                    .border(1.dp, colors.softBorder, RoundedCornerShape(20.dp)),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = SoftMintSurface)
+                colors = CardDefaults.cardColors(containerColor = colors.softSurface)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -263,24 +255,24 @@ fun DiaryScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.EditNote,
-                                contentDescription = "Diary Note",
-                                tint = ForestGreenDark,
+                                contentDescription = strings.todaysStoryNote,
+                                tint = colors.accentText,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Today's Story Note",
+                                text = strings.todaysStoryNote,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = TextPrimary
+                                color = colors.textPrimary
                             )
                         }
 
                         Text(
-                            text = if (isEditingNote) "Done" else "Type Note",
+                            text = if (isEditingNote) strings.done else strings.typeNote,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = EmeraldBrand,
+                            color = colors.accentPrimary,
                             modifier = Modifier.clickable {
                                 if (isEditingNote) {
                                     onSaveNote(noteText)
@@ -296,7 +288,7 @@ fun DiaryScreen(
                         isTranscribing = uiState.isTranscribing,
                         transcriptText = uiState.voiceTranscript,
                         errorMessage = uiState.voiceError,
-                        promptHint = "Tap mic to speak your diary note for today",
+                        promptHint = strings.voiceTapMicDiary,
                         onAudioCaptured = onVoiceDiaryAudio
                     )
 
@@ -306,7 +298,7 @@ fun DiaryScreen(
                         OutlinedTextField(
                             value = noteText,
                             onValueChange = { noteText = it },
-                            placeholder = { Text("e.g. Shared groceries with my roommate today.") },
+                            placeholder = { Text(strings.diaryNotePlaceholder) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("diary_note_input"),
@@ -325,13 +317,13 @@ fun DiaryScreen(
                             ),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Save Note", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(strings.saveNote, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     } else {
                         Text(
-                            text = if (noteText.isNotBlank()) noteText else "No note written for this day yet. Speak above or tap 'Type Note' to remember why you spent today.",
+                            text = if (noteText.isNotBlank()) noteText else strings.diaryNoteEmpty,
                             fontSize = 13.sp,
-                            color = TextSecondary,
+                            color = colors.textSecondary,
                             fontStyle = if (noteText.isBlank()) FontStyle.Italic else FontStyle.Normal,
                             lineHeight = 18.sp
                         )
@@ -340,7 +332,6 @@ fun DiaryScreen(
             }
         }
 
-        // Search & Filter Box
         item {
             Column(
                 modifier = Modifier
@@ -350,12 +341,12 @@ fun DiaryScreen(
                 OutlinedTextField(
                     value = uiState.searchQuery,
                     onValueChange = onSearchChange,
-                    placeholder = { Text("Search food, Mukuru, EcoCash, rent...") },
+                    placeholder = { Text(strings.searchPlaceholder) },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
-                            tint = TextSecondary
+                            contentDescription = null,
+                            tint = colors.textSecondary
                         )
                     },
                     trailingIcon = {
@@ -363,8 +354,8 @@ fun DiaryScreen(
                             IconButton(onClick = { onSearchChange("") }) {
                                 Icon(
                                     imageVector = Icons.Default.Clear,
-                                    contentDescription = "Clear",
-                                    tint = TextSecondary
+                                    contentDescription = strings.close,
+                                    tint = colors.textSecondary
                                 )
                             }
                         }
@@ -382,15 +373,15 @@ fun DiaryScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    listOf("ALL" to "All", "INCOME" to "Money In", "EXPENSE" to "Money Out").forEach { (type, label) ->
+                    listOf("ALL" to strings.filterAll, "INCOME" to strings.moneyIn, "EXPENSE" to strings.moneyOut).forEach { (type, label) ->
                         val isSelected = uiState.filterType == type
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(if (isSelected) EmeraldBrand else SoftMintSurface)
+                                .background(if (isSelected) EmeraldBrand else colors.softSurface)
                                 .border(
                                     1.dp,
-                                    if (isSelected) EmeraldBrand else SoftMintBorder,
+                                    if (isSelected) EmeraldBrand else colors.softBorder,
                                     RoundedCornerShape(14.dp)
                                 )
                                 .clickable { onTypeFilterChange(type) }
@@ -400,7 +391,7 @@ fun DiaryScreen(
                                 text = label,
                                 fontSize = 12.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) Color.White else TextPrimary
+                                color = if (isSelected) Color.White else colors.textPrimary
                             )
                         }
                     }
@@ -417,13 +408,13 @@ fun DiaryScreen(
         item {
             Text(
                 text = if (uiState.searchQuery.isNotBlank()) {
-                    "Found (${displayList.size})"
+                    String.format(strings.foundCount, displayList.size)
                 } else {
-                    "Records for $fullDateHeader (${displayList.size})"
+                    String.format(strings.recordsForDateCount, fullDateHeader, displayList.size)
                 },
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary,
+                color = colors.textPrimary,
                 modifier = Modifier.padding(horizontal = 22.dp)
             )
         }
@@ -434,9 +425,9 @@ fun DiaryScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
-                        .border(1.dp, SoftMintBorder, RoundedCornerShape(18.dp)),
+                        .border(1.dp, colors.softBorder, RoundedCornerShape(18.dp)),
                     shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = colors.cardBg)
                 ) {
                     Column(
                         modifier = Modifier
@@ -445,16 +436,16 @@ fun DiaryScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "No money records for this day",
+                            text = strings.noRecordsForDay,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Go back to Home and tap 'I Spent' or 'Got Paid' to add one.",
+                            text = strings.noRecordsForDayTip,
                             fontSize = 12.sp,
-                            color = TextSecondary,
+                            color = colors.textSecondary,
                             textAlign = TextAlign.Center
                         )
                     }

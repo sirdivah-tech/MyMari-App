@@ -44,6 +44,11 @@ data class DaySpending(
     val isToday: Boolean
 )
 
+data class BudgetAlert(
+    val category: String,
+    val levelPct: Int
+)
+
 data class FinanceUiState(
     val isProfileLoading: Boolean = true,
     val transactions: List<TransactionDoc> = emptyList(),
@@ -76,7 +81,7 @@ data class FinanceUiState(
     val voiceParsedTransaction: VoiceParsedTransaction? = null,
     val voiceError: String? = null,
     val statusError: String? = null,
-    val budgetAlertMessage: String? = null
+    val budgetAlert: BudgetAlert? = null
 )
 
 private sealed interface StreamState<out T> {
@@ -112,7 +117,7 @@ class FinanceViewModel(
     private val _voiceParsedTransaction = MutableStateFlow<VoiceParsedTransaction?>(null)
     private val _voiceError = MutableStateFlow<String?>(null)
     private val _statusError = MutableStateFlow<String?>(null)
-    private val _budgetAlertMessage = MutableStateFlow<String?>(null)
+    private val _budgetAlert = MutableStateFlow<BudgetAlert?>(null)
 
     private fun <T> Flow<T>.toSafeStreamState(fallbackMessage: String): Flow<StreamState<T>> {
         return this
@@ -164,7 +169,7 @@ class FinanceViewModel(
         _voiceParsedTransaction,
         _voiceError,
         _statusError,
-        _budgetAlertMessage
+        _budgetAlert
     ) { args: Array<Any?> ->
         @Suppress("UNCHECKED_CAST")
         val profileState = args[0] as StreamState<UserProfileDoc?>
@@ -191,7 +196,7 @@ class FinanceViewModel(
         val voiceParsed = args[16] as VoiceParsedTransaction?
         val voiceError = args[17] as String?
         val statusError = args[18] as String?
-        val budgetAlert = args[19] as String?
+        val budgetAlert = args[19] as BudgetAlert?
 
         val isProfileLoading = profileState is StreamState.Loading
         val profile = (profileState as? StreamState.Data)?.value ?: UserProfileDoc(
@@ -320,7 +325,7 @@ class FinanceViewModel(
             voiceParsedTransaction = voiceParsed,
             voiceError = voiceError,
             statusError = statusError ?: streamError,
-            budgetAlertMessage = budgetAlert
+            budgetAlert = budgetAlert
         )
     }.stateIn(
         scope = viewModelScope,
@@ -363,7 +368,7 @@ class FinanceViewModel(
     }
 
     fun clearBudgetAlert() {
-        _budgetAlertMessage.value = null
+        _budgetAlert.value = null
     }
 
     fun showAddIncome(show: Boolean) {
@@ -633,9 +638,9 @@ class FinanceViewModel(
         val ratio = if (catBudget.amount > 0) currentSpent / catBudget.amount else 0.0
 
         when {
-            ratio >= 1.0 -> _budgetAlertMessage.value = "Heads up! You reached your limit for $category."
-            ratio >= 0.8 -> _budgetAlertMessage.value = "Careful: You used 80% of your $category limit."
-            ratio >= 0.5 -> _budgetAlertMessage.value = "Halfway check: 50% of your $category limit is used."
+            ratio >= 1.0 -> _budgetAlert.value = BudgetAlert(category, 100)
+            ratio >= 0.8 -> _budgetAlert.value = BudgetAlert(category, 80)
+            ratio >= 0.5 -> _budgetAlert.value = BudgetAlert(category, 50)
         }
     }
 }

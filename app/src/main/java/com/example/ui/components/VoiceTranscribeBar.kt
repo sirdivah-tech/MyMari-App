@@ -45,13 +45,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.data.ai.AudioRecorderHelper
-import com.example.ui.theme.AlertOrange
+import com.example.ui.i18n.MyMariI18n
 import com.example.ui.theme.EmeraldBrand
-import com.example.ui.theme.ForestGreenDark
-import com.example.ui.theme.SoftMintBorder
-import com.example.ui.theme.SoftMintContainer
-import com.example.ui.theme.SoftMintSurface
-import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.MyMariTheme
 import kotlinx.coroutines.delay
 
 @Composable
@@ -59,12 +55,15 @@ fun VoiceTranscribeBar(
     isTranscribing: Boolean,
     transcriptText: String?,
     errorMessage: String?,
-    promptHint: String = "Tap mic & speak (e.g. \"Spent $3 on lunch via EcoCash\")",
+    promptHint: String? = null,
     onAudioCaptured: (ByteArray) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val recorder = remember { AudioRecorderHelper(context) }
+    val colors = MyMariTheme.colors
+    val strings = MyMariI18n.strings
+    val resolvedHint = promptHint ?: strings.voiceTapMicExpense
 
     var isRecording by remember { mutableStateOf(false) }
     var elapsedSeconds by remember { mutableIntStateOf(0) }
@@ -80,10 +79,10 @@ fun VoiceTranscribeBar(
                 isRecording = true
                 elapsedSeconds = 0
             } else {
-                permissionDeniedMsg = "Could not access microphone right now."
+                permissionDeniedMsg = strings.voiceMicUnavailable
             }
         } else {
-            permissionDeniedMsg = "Microphone permission is needed to record voice notes."
+            permissionDeniedMsg = strings.voiceMicPermNeeded
         }
     }
 
@@ -107,10 +106,10 @@ fun VoiceTranscribeBar(
     }
 
     val containerBg by animateColorAsState(
-        targetValue = if (isRecording) Color(0xFFFFF7ED) else SoftMintSurface,
+        targetValue = if (isRecording) colors.warningBg else colors.softSurface,
         label = "voice_bg"
     )
-    val borderCol = if (isRecording) AlertOrange else SoftMintBorder
+    val borderCol = if (isRecording) colors.alertOrange else colors.softBorder
 
     Column(
         modifier = modifier
@@ -135,8 +134,8 @@ fun VoiceTranscribeBar(
                         .clip(CircleShape)
                         .background(
                             when {
-                                isRecording -> AlertOrange
-                                isTranscribing -> SoftMintContainer
+                                isRecording -> colors.alertOrange
+                                isTranscribing -> colors.softContainer
                                 else -> EmeraldBrand
                             }
                         )
@@ -158,7 +157,7 @@ fun VoiceTranscribeBar(
                                         isRecording = true
                                         elapsedSeconds = 0
                                     } else {
-                                        permissionDeniedMsg = "Microphone unavailable."
+                                        permissionDeniedMsg = strings.voiceMicUnavailable
                                     }
                                 } else {
                                     micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
@@ -171,13 +170,13 @@ fun VoiceTranscribeBar(
                     if (isTranscribing) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
-                            color = ForestGreenDark,
+                            color = colors.accentText,
                             strokeWidth = 2.dp
                         )
                     } else {
                         Icon(
                             imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
-                            contentDescription = if (isRecording) "Stop recording" else "Record voice note",
+                            contentDescription = strings.voiceSpeakWithAi,
                             tint = Color.White,
                             modifier = Modifier.size(22.dp)
                         )
@@ -189,22 +188,22 @@ fun VoiceTranscribeBar(
                 Column {
                     Text(
                         text = when {
-                            isRecording -> "Listening... (${elapsedSeconds}s) Tap to finish"
-                            isTranscribing -> "Transcribing your voice..."
-                            else -> "Speak with Voice AI"
+                            isRecording -> String.format(strings.voiceListening, elapsedSeconds)
+                            isTranscribing -> strings.voiceTranscribing
+                            else -> strings.voiceSpeakWithAi
                         },
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isRecording) AlertOrange else ForestGreenDark
+                        color = if (isRecording) colors.alertOrange else colors.accentText
                     )
                     Text(
                         text = when {
-                            isRecording -> "Speak clearly into your microphone"
-                            isTranscribing -> "Turning your speech into text"
-                            else -> promptHint
+                            isRecording -> strings.voiceSpeakClearly
+                            isTranscribing -> strings.voiceTurningSpeech
+                            else -> resolvedHint
                         },
                         fontSize = 11.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
             }
@@ -213,14 +212,14 @@ fun VoiceTranscribeBar(
         if (!transcriptText.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Heard: \"$transcriptText\"",
+                text = String.format(strings.voiceHeardPrefix, transcriptText),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
-                color = ForestGreenDark,
+                color = colors.accentText,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color.White)
+                    .background(colors.cardBg)
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             )
         }
@@ -231,7 +230,7 @@ fun VoiceTranscribeBar(
             Text(
                 text = shownErr,
                 fontSize = 11.sp,
-                color = Color(0xFFDC2626)
+                color = colors.expenseRed
             )
         }
     }

@@ -32,13 +32,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.EmeraldBrand
-import com.example.ui.theme.ForestGreenDark
-import com.example.ui.theme.NeonLime
-import com.example.ui.theme.SoftMintBorder
-import com.example.ui.theme.SoftMintContainer
-import com.example.ui.theme.SoftMintSurface
-import com.example.ui.theme.TextSecondary
+import com.example.ui.i18n.MyMariI18n
+import com.example.ui.theme.MyMariTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -48,21 +43,23 @@ fun WalletBalanceCard(
     currencySymbol: String,
     balance: Double,
     budgetConsumedPct: Float,
-    onSendClick: () -> Unit, // Spent
-    onReceiveClick: () -> Unit, // Got Money
-    onTopUpClick: () -> Unit, // Save
-    onMoreClick: () -> Unit, // Diary
+    onSendClick: () -> Unit,
+    onReceiveClick: () -> Unit,
+    onTopUpClick: () -> Unit,
+    onMoreClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = MyMariTheme.colors
+    val strings = MyMariI18n.strings
     val formattedDate = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date())
     val formattedBalance = String.format(Locale.US, "%,.2f", balance)
-    val pctBadge = "${(budgetConsumedPct * 100).toInt()}% of limit used"
+    val pctBadge = String.format(strings.pctLimitUsed, (budgetConsumedPct * 100).toInt())
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .border(1.dp, SoftMintBorder, RoundedCornerShape(26.dp)),
+            .border(1.dp, colors.softBorder, RoundedCornerShape(26.dp)),
         shape = RoundedCornerShape(26.dp),
         color = Color.Transparent,
         shadowElevation = 2.dp
@@ -72,8 +69,8 @@ fun WalletBalanceCard(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            SoftMintSurface,
-                            SoftMintContainer
+                            colors.heroGradientTop,
+                            colors.heroGradientBottom
                         )
                     )
                 )
@@ -86,8 +83,8 @@ fun WalletBalanceCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Money Left to Spend",
-                        color = ForestGreenDark,
+                        text = strings.moneyLeftToSpend,
+                        color = colors.accentText,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -95,14 +92,14 @@ fun WalletBalanceCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White)
-                            .border(1.dp, SoftMintBorder, RoundedCornerShape(12.dp))
+                            .background(colors.pillBg)
+                            .border(1.dp, colors.softBorder, RoundedCornerShape(12.dp))
                             .padding(horizontal = 10.dp, vertical = 4.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = pctBadge,
-                            color = EmeraldBrand,
+                            color = colors.accentPrimary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -113,7 +110,7 @@ fun WalletBalanceCard(
 
                 Text(
                     text = "$currencySymbol$formattedBalance",
-                    color = ForestGreenDark,
+                    color = colors.accentText,
                     fontSize = 34.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = (-0.5).sp,
@@ -123,8 +120,8 @@ fun WalletBalanceCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "Updated today • $formattedDate",
-                    color = TextSecondary,
+                    text = String.format(strings.updatedToday, formattedDate),
+                    color = colors.textSecondary,
                     fontSize = 12.sp
                 )
 
@@ -135,25 +132,25 @@ fun WalletBalanceCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     WalletActionButton(
-                        title = "I Spent",
+                        title = strings.actionISpent,
                         icon = Icons.AutoMirrored.Filled.CallMade,
                         onClick = onSendClick,
                         tag = "btn_send_expense"
                     )
                     WalletActionButton(
-                        title = "Got Paid",
+                        title = strings.actionGotPaid,
                         icon = Icons.AutoMirrored.Filled.CallReceived,
                         onClick = onReceiveClick,
                         tag = "btn_receive_income"
                     )
                     WalletActionButton(
-                        title = "Save",
+                        title = strings.actionSave,
                         icon = Icons.Default.Savings,
                         onClick = onTopUpClick,
                         tag = "btn_topup_savings"
                     )
                     WalletActionButton(
-                        title = "Diary",
+                        title = strings.actionDiary,
                         icon = Icons.Default.Book,
                         onClick = onMoreClick,
                         tag = "btn_more_diary"
@@ -171,6 +168,7 @@ private fun WalletActionButton(
     onClick: () -> Unit,
     tag: String
 ) {
+    val colors = MyMariTheme.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -181,21 +179,21 @@ private fun WalletActionButton(
             modifier = Modifier
                 .size(54.dp)
                 .clip(RoundedCornerShape(18.dp))
-                .background(Color.White)
-                .border(1.dp, SoftMintBorder, RoundedCornerShape(18.dp)),
+                .background(colors.pillBg)
+                .border(1.dp, colors.softBorder, RoundedCornerShape(18.dp)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = title,
-                tint = EmeraldBrand,
+                tint = colors.accentPrimary,
                 modifier = Modifier.size(22.dp)
             )
         }
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = title,
-            color = ForestGreenDark,
+            color = colors.accentText,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold
         )

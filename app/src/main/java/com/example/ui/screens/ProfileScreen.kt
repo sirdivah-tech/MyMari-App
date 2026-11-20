@@ -22,9 +22,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -47,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontStyle
@@ -55,21 +61,22 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.FinanceConstants
+import com.example.data.preferences.AppLanguage
+import com.example.data.preferences.ThemeMode
 import com.example.data.remote.UserProfileDoc
 import com.example.ui.FinanceUiState
-import com.example.ui.theme.CanvasBgLight
+import com.example.ui.i18n.MyMariI18n
 import com.example.ui.theme.EmeraldBrand
-import com.example.ui.theme.ForestGreenDark
-import com.example.ui.theme.SoftMintBorder
-import com.example.ui.theme.SoftMintContainer
-import com.example.ui.theme.SoftMintSurface
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.MyMariTheme
 import java.util.Locale
 
 @Composable
 fun ProfileScreen(
     uiState: FinanceUiState,
+    themeMode: ThemeMode,
+    onThemeModeChange: (ThemeMode) -> Unit,
+    appLanguage: AppLanguage,
+    onAppLanguageChange: (AppLanguage) -> Unit,
     onSaveProfile: (UserProfileDoc) -> Unit,
     onTestReminder: (Boolean) -> Unit,
     onLoadDemoData: () -> Unit,
@@ -79,6 +86,8 @@ fun ProfileScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val colors = MyMariTheme.colors
+    val strings = MyMariI18n.strings
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
@@ -88,10 +97,9 @@ fun ProfileScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(CanvasBgLight),
+            .background(colors.canvasBg),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Title Header
         item {
             Column(
                 modifier = Modifier
@@ -99,15 +107,15 @@ fun ProfileScreen(
                     .padding(horizontal = 20.dp, vertical = 10.dp)
             ) {
                 Text(
-                    text = "Profile & Settings",
+                    text = strings.profileTitle,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
                 Text(
-                    text = "Your account, currency, and daily reminders",
+                    text = strings.profileSubtitle,
                     fontSize = 13.sp,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
         }
@@ -118,9 +126,9 @@ fun ProfileScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .border(1.dp, SoftMintBorder, RoundedCornerShape(22.dp)),
+                    .border(1.dp, colors.softBorder, RoundedCornerShape(22.dp)),
                 shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = colors.cardBg)
             ) {
                 Row(
                     modifier = Modifier
@@ -132,13 +140,13 @@ fun ProfileScreen(
                         modifier = Modifier
                             .size(58.dp)
                             .clip(CircleShape)
-                            .background(SoftMintContainer)
-                            .border(1.dp, SoftMintBorder, CircleShape),
+                            .background(colors.softContainer)
+                            .border(1.dp, colors.softBorder, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = profile.fullName.take(1).uppercase(),
-                            color = ForestGreenDark,
+                            color = colors.accentText,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -151,18 +159,18 @@ fun ProfileScreen(
                             text = profile.fullName,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                         Text(
                             text = profile.university,
                             fontSize = 13.sp,
-                            color = TextSecondary
+                            color = colors.textSecondary
                         )
                         if (profile.email.isNotBlank()) {
                             Text(
                                 text = profile.email,
                                 fontSize = 12.sp,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                         }
                     }
@@ -175,11 +183,148 @@ fun ProfileScreen(
                             .padding(horizontal = 12.dp, vertical = 7.dp)
                     ) {
                         Text(
-                            text = "Edit",
+                            text = strings.edit,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
+                    }
+                }
+            }
+        }
+
+        // Theme & Language Card (System / Light / Dark + English / ChiShona / IsiNdebele)
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .border(1.dp, colors.softBorder, RoundedCornerShape(22.dp)),
+                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(containerColor = colors.cardBg)
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Palette,
+                            contentDescription = strings.appearanceAndLanguage,
+                            tint = colors.accentPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = strings.appearanceAndLanguage,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = strings.appThemeTitle,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.textPrimary
+                    )
+                    Text(
+                        text = strings.appThemeSubtitle,
+                        fontSize = 12.sp,
+                        color = colors.textSecondary
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ThemeOptionChip(
+                            label = strings.themeSystem,
+                            icon = Icons.Default.BrightnessAuto,
+                            selected = themeMode == ThemeMode.SYSTEM,
+                            onClick = { onThemeModeChange(ThemeMode.SYSTEM) },
+                            tag = "theme_option_system",
+                            modifier = Modifier.weight(1f)
+                        )
+                        ThemeOptionChip(
+                            label = strings.themeLight,
+                            icon = Icons.Default.LightMode,
+                            selected = themeMode == ThemeMode.LIGHT,
+                            onClick = { onThemeModeChange(ThemeMode.LIGHT) },
+                            tag = "theme_option_light",
+                            modifier = Modifier.weight(1f)
+                        )
+                        ThemeOptionChip(
+                            label = strings.themeDark,
+                            icon = Icons.Default.DarkMode,
+                            selected = themeMode == ThemeMode.DARK,
+                            onClick = { onThemeModeChange(ThemeMode.DARK) },
+                            tag = "theme_option_dark",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = strings.appLanguageTitle,
+                            tint = colors.accentPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = strings.appLanguageTitle,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.textPrimary
+                        )
+                    }
+                    Text(
+                        text = strings.appLanguageSubtitle,
+                        fontSize = 12.sp,
+                        color = colors.textSecondary
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val languages = listOf(
+                            Triple(AppLanguage.ENGLISH, strings.langEnglish, "lang_option_en"),
+                            Triple(AppLanguage.SHONA, strings.langShona, "lang_option_sn"),
+                            Triple(AppLanguage.NDEBELE, strings.langNdebele, "lang_option_nd")
+                        )
+                        languages.forEach { (lang, label, tag) ->
+                            val selected = appLanguage == lang
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(if (selected) EmeraldBrand else colors.softSurface)
+                                    .border(
+                                        1.dp,
+                                        if (selected) EmeraldBrand else colors.softBorder,
+                                        RoundedCornerShape(14.dp)
+                                    )
+                                    .clickable { onAppLanguageChange(lang) }
+                                    .padding(vertical = 10.dp)
+                                    .testTag(tag),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (selected) Color.White else colors.textPrimary
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -191,16 +336,16 @@ fun ProfileScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .border(1.dp, SoftMintBorder, RoundedCornerShape(22.dp)),
+                    .border(1.dp, colors.softBorder, RoundedCornerShape(22.dp)),
                 shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = colors.cardBg)
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
-                        text = "Money Settings",
+                        text = strings.moneySettingsTitle,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -215,30 +360,30 @@ fun ProfileScreen(
                     ) {
                         Column {
                             Text(
-                                text = "Currency",
+                                text = strings.currencyLabel,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = TextPrimary
+                                color = colors.textPrimary
                             )
                             Text(
                                 text = "${profile.preferredCurrency} (${profile.currencySymbol.trim()})",
                                 fontSize = 12.sp,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                         }
 
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(SoftMintSurface)
-                                .border(1.dp, SoftMintBorder, RoundedCornerShape(10.dp))
+                                .background(colors.softSurface)
+                                .border(1.dp, colors.softBorder, RoundedCornerShape(10.dp))
                                 .padding(horizontal = 10.dp, vertical = 5.dp)
                         ) {
                             Text(
-                                text = "Change",
+                                text = strings.change,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = EmeraldBrand
+                                color = colors.accentPrimary
                             )
                         }
                     }
@@ -255,15 +400,15 @@ fun ProfileScreen(
                     ) {
                         Column {
                             Text(
-                                text = "Monthly Spending Limit",
+                                text = strings.monthlyLimitLabel,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = TextPrimary
+                                color = colors.textPrimary
                             )
                             Text(
                                 text = "${profile.currencySymbol}${String.format(Locale.US, "%,.2f", profile.monthlyBudgetTarget)}",
                                 fontSize = 12.sp,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                         }
                     }
@@ -277,24 +422,24 @@ fun ProfileScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .border(1.dp, SoftMintBorder, RoundedCornerShape(22.dp)),
+                    .border(1.dp, colors.softBorder, RoundedCornerShape(22.dp)),
                 shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = colors.cardBg)
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.NotificationsActive,
-                            contentDescription = "Reminders",
-                            tint = EmeraldBrand,
+                            contentDescription = strings.dailyRemindersTitle,
+                            tint = colors.accentPrimary,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Daily Check-In Reminders",
+                            text = strings.dailyRemindersTitle,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                     }
 
@@ -309,15 +454,15 @@ fun ProfileScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Evening Check-in (${profile.eveningReminderTime})",
+                                text = String.format(strings.eveningCheckIn, profile.eveningReminderTime),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = TextPrimary
+                                color = colors.textPrimary
                             )
                             Text(
-                                text = "Reminds you to write down what you spent today.",
+                                text = strings.eveningCheckInDesc,
                                 fontSize = 11.sp,
-                                color = TextSecondary,
+                                color = colors.textSecondary,
                                 lineHeight = 15.sp
                             )
                         }
@@ -345,15 +490,15 @@ fun ProfileScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Morning Check-in (${profile.morningReminderTime})",
+                                text = String.format(strings.morningCheckIn, profile.morningReminderTime),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = TextPrimary
+                                color = colors.textPrimary
                             )
                             Text(
-                                text = "Shows how much money you have left for the day.",
+                                text = strings.morningCheckInDesc,
                                 fontSize = 11.sp,
-                                color = TextSecondary,
+                                color = colors.textSecondary,
                                 lineHeight = 15.sp
                             )
                         }
@@ -381,11 +526,11 @@ fun ProfileScreen(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = SoftMintSurface,
-                                contentColor = ForestGreenDark
+                                containerColor = colors.softSurface,
+                                contentColor = colors.accentText
                             )
                         ) {
-                            Text("Test Evening", fontSize = 12.sp)
+                            Text(strings.testEvening, fontSize = 12.sp)
                         }
 
                         Button(
@@ -393,11 +538,11 @@ fun ProfileScreen(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = SoftMintSurface,
-                                contentColor = ForestGreenDark
+                                containerColor = colors.softSurface,
+                                contentColor = colors.accentText
                             )
                         ) {
-                            Text("Test Morning", fontSize = 12.sp)
+                            Text(strings.testMorning, fontSize = 12.sp)
                         }
                     }
                 }
@@ -410,16 +555,16 @@ fun ProfileScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .border(1.dp, SoftMintBorder, RoundedCornerShape(22.dp)),
+                    .border(1.dp, colors.softBorder, RoundedCornerShape(22.dp)),
                 shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = colors.cardBg)
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
-                        text = "Your Data",
+                        text = strings.yourDataTitle,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -434,29 +579,29 @@ fun ProfileScreen(
                                     putExtra(Intent.EXTRA_SUBJECT, "MyMari Money Records")
                                     putExtra(Intent.EXTRA_TEXT, csv)
                                 }
-                                context.startActivity(Intent.createChooser(shareIntent, "Share CSV File"))
+                                context.startActivity(Intent.createChooser(shareIntent, strings.shareCsvChooser))
                             }
                             .padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Default.Download,
-                            contentDescription = "Share CSV",
-                            tint = EmeraldBrand,
+                            contentDescription = strings.shareCsvTitle,
+                            tint = colors.accentPrimary,
                             modifier = Modifier.size(22.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "Share Records (CSV)",
+                                text = strings.shareCsvTitle,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = TextPrimary
+                                color = colors.textPrimary
                             )
                             Text(
-                                text = "Save or send a copy of your money records",
+                                text = strings.shareCsvSub,
                                 fontSize = 12.sp,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                         }
                     }
@@ -468,29 +613,29 @@ fun ProfileScreen(
                             .fillMaxWidth()
                             .clickable {
                                 onLoadDemoData()
-                                Toast.makeText(context, "Added sample student records!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, strings.loadDemoToast, Toast.LENGTH_SHORT).show()
                             }
                             .padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Sample Data",
-                            tint = EmeraldBrand,
+                            contentDescription = strings.loadDemoTitle,
+                            tint = colors.accentPrimary,
                             modifier = Modifier.size(22.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "Load Sample Student Records",
+                                text = strings.loadDemoTitle,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = TextPrimary
+                                color = colors.textPrimary
                             )
                             Text(
-                                text = "Try out Mukuru, EcoCash, Canteen & Rent examples",
+                                text = strings.loadDemoSub,
                                 fontSize = 12.sp,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                         }
                     }
@@ -506,22 +651,22 @@ fun ProfileScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.DeleteForever,
-                            contentDescription = "Start Fresh",
-                            tint = Color(0xFFEF4444),
+                            contentDescription = strings.clearAllTitle,
+                            tint = colors.expenseRed,
                             modifier = Modifier.size(22.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "Clear All Money Records",
+                                text = strings.clearAllTitle,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFFEF4444)
+                                color = colors.expenseRed
                             )
                             Text(
-                                text = "Erase your entries and start fresh from zero",
+                                text = strings.clearAllSub,
                                 fontSize = 12.sp,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                         }
                     }
@@ -539,16 +684,16 @@ fun ProfileScreen(
                     .height(50.dp)
                     .testTag("btn_sign_out"),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626))
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.expenseRed)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Logout,
-                    contentDescription = "Sign out",
+                    contentDescription = strings.signOutGoogle,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Sign Out of Google Account",
+                    text = strings.signOutGoogle,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -561,40 +706,40 @@ fun ProfileScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .border(1.dp, SoftMintBorder, RoundedCornerShape(22.dp)),
+                    .border(1.dp, colors.softBorder, RoundedCornerShape(22.dp)),
                 shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = SoftMintSurface)
+                colors = CardDefaults.cardColors(containerColor = colors.softSurface)
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
-                        text = "About MyMari",
+                        text = strings.aboutMyMari,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
 
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = "Created by ${FinanceConstants.DEVELOPER_NAME}",
+                        text = String.format(strings.createdByPrefix, FinanceConstants.DEVELOPER_NAME),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = ForestGreenDark
+                        color = colors.accentText
                     )
 
                     Text(
-                        text = FinanceConstants.TAGLINE,
+                        text = strings.tagline,
                         fontSize = 12.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
 
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = "\"${FinanceConstants.BRAND_MESSAGE}\"",
+                        text = "\"${strings.brandMessage}\"",
                         fontSize = 12.sp,
                         fontStyle = FontStyle.Italic,
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         lineHeight = 17.sp
                     )
                 }
@@ -606,7 +751,6 @@ fun ProfileScreen(
         }
     }
 
-    // Dialog: Edit Student Profile
     if (showEditProfileDialog) {
         var nameInput by remember { mutableStateOf(profile.fullName) }
         var uniInput by remember { mutableStateOf(profile.university) }
@@ -614,14 +758,14 @@ fun ProfileScreen(
 
         AlertDialog(
             onDismissRequest = { showEditProfileDialog = false },
-            containerColor = Color.White,
-            title = { Text("Edit Profile", fontWeight = FontWeight.Bold, color = TextPrimary) },
+            containerColor = colors.cardBg,
+            title = { Text(strings.editProfileTitle, fontWeight = FontWeight.Bold, color = colors.textPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
                         value = nameInput,
                         onValueChange = { nameInput = it },
-                        label = { Text("Your Name") },
+                        label = { Text(strings.yourNameLabel) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp)
@@ -629,7 +773,7 @@ fun ProfileScreen(
                     OutlinedTextField(
                         value = uniInput,
                         onValueChange = { uniInput = it },
-                        label = { Text("School / University") },
+                        label = { Text(strings.schoolUniLabel) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp)
@@ -637,7 +781,7 @@ fun ProfileScreen(
                     OutlinedTextField(
                         value = budgetInput,
                         onValueChange = { budgetInput = it },
-                        label = { Text("Monthly Spending Limit") },
+                        label = { Text(strings.monthlyLimitLabel) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -663,23 +807,22 @@ fun ProfileScreen(
                         contentColor = Color.White
                     )
                 ) {
-                    Text("Save Changes")
+                    Text(strings.saveChangesBtn)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditProfileDialog = false }) {
-                    Text("Cancel")
+                    Text(strings.cancel)
                 }
             }
         )
     }
 
-    // Dialog: Select Currency
     if (showCurrencyDialog) {
         AlertDialog(
             onDismissRequest = { showCurrencyDialog = false },
-            containerColor = Color.White,
-            title = { Text("Choose Currency", fontWeight = FontWeight.Bold, color = TextPrimary) },
+            containerColor = colors.cardBg,
+            title = { Text(strings.chooseCurrencyTitle, fontWeight = FontWeight.Bold, color = colors.textPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     FinanceConstants.CURRENCIES.forEach { opt ->
@@ -688,8 +831,8 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) EmeraldBrand else SoftMintSurface)
-                                .border(1.dp, if (isSelected) EmeraldBrand else SoftMintBorder, RoundedCornerShape(12.dp))
+                                .background(if (isSelected) EmeraldBrand else colors.softSurface)
+                                .border(1.dp, if (isSelected) EmeraldBrand else colors.softBorder, RoundedCornerShape(12.dp))
                                 .clickable {
                                     onSaveProfile(
                                         profile.copy(
@@ -707,13 +850,13 @@ fun ProfileScreen(
                                 text = "${opt.name} (${opt.code})",
                                 fontSize = 14.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) Color.White else TextPrimary
+                                color = if (isSelected) Color.White else colors.textPrimary
                             )
                             Text(
                                 text = opt.symbol.trim(),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isSelected) Color.White else ForestGreenDark
+                                color = if (isSelected) Color.White else colors.accentText
                             )
                         }
                     }
@@ -722,38 +865,78 @@ fun ProfileScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showCurrencyDialog = false }) {
-                    Text("Cancel")
+                    Text(strings.cancel)
                 }
             }
         )
     }
 
-    // Dialog: Confirm Clear All
     if (showClearConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showClearConfirmDialog = false },
-            containerColor = Color.White,
-            title = { Text("Clear Everything?", fontWeight = FontWeight.Bold, color = TextPrimary) },
+            containerColor = colors.cardBg,
+            title = { Text(strings.clearEverythingTitle, fontWeight = FontWeight.Bold, color = colors.textPrimary) },
             text = {
-                Text("This will delete all your saved spending, income, category limits, and savings goals. Are you sure?")
+                Text(strings.clearEverythingBody, color = colors.textSecondary)
             },
             confirmButton = {
                 Button(
                     onClick = {
                         onClearAllData()
                         showClearConfirmDialog = false
-                        Toast.makeText(context, "All records cleared.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, strings.clearEverythingToast, Toast.LENGTH_SHORT).show()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.expenseRed)
                 ) {
-                    Text("Clear Everything", color = Color.White)
+                    Text(strings.clearEverythingConfirm, color = Color.White)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirmDialog = false }) {
-                    Text("Cancel")
+                    Text(strings.cancel)
                 }
             }
+        )
+    }
+}
+
+@Composable
+private fun ThemeOptionChip(
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+    tag: String,
+    modifier: Modifier = Modifier
+) {
+    val colors = MyMariTheme.colors
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) EmeraldBrand else colors.softSurface)
+            .border(
+                1.dp,
+                if (selected) EmeraldBrand else colors.softBorder,
+                RoundedCornerShape(14.dp)
+            )
+            .clickable { onClick() }
+            .padding(vertical = 10.dp, horizontal = 8.dp)
+            .testTag(tag),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = if (selected) Color.White else colors.textPrimary,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(5.dp))
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = if (selected) Color.White else colors.textPrimary
         )
     }
 }

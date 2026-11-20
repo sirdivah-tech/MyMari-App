@@ -17,12 +17,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -35,12 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.FinanceConstants
 import com.example.data.model.QuickPreset
+import com.example.ui.i18n.MyMariI18n
 import com.example.ui.theme.EmeraldBrand
-import com.example.ui.theme.ForestGreenDark
-import com.example.ui.theme.NeonLime
-import com.example.ui.theme.SoftMintBorder
-import com.example.ui.theme.SoftMintContainer
-import com.example.ui.theme.SoftMintSurface
+import com.example.ui.theme.MyMariTheme
 
 @Composable
 fun QuickPresetsRow(
@@ -49,13 +44,16 @@ fun QuickPresetsRow(
     onCustomAddClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = MyMariTheme.colors
+    val strings = MyMariI18n.strings
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .border(1.dp, SoftMintBorder, RoundedCornerShape(22.dp)),
+            .border(1.dp, colors.softBorder, RoundedCornerShape(22.dp)),
         shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = colors.cardBg),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -65,19 +63,19 @@ fun QuickPresetsRow(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "1-Tap Common Buys",
+                    text = strings.quickPresetsTitle,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = colors.textPrimary
                 )
                 Text(
-                    text = "Super Fast",
+                    text = strings.quickPresetsBadge,
                     fontSize = 11.sp,
-                    color = ForestGreenDark,
+                    color = colors.accentText,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(SoftMintContainer)
+                        .background(colors.softContainer)
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 )
             }
@@ -104,22 +102,23 @@ fun QuickPresetsRow(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Mic,
-                                contentDescription = "Speak or type expense",
+                                contentDescription = strings.quickSpeakAdd,
                                 tint = Color.White,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Speak/Add",
+                            text = strings.quickSpeakAdd,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = EmeraldBrand
+                            color = colors.accentPrimary
                         )
                     }
                 }
 
                 items(FinanceConstants.QUICK_PRESETS) { preset ->
+                    val localizedTitle = strings.presetTitle(preset.title)
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
@@ -130,28 +129,28 @@ fun QuickPresetsRow(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(CircleShape)
-                                .background(SoftMintSurface)
-                                .border(1.dp, SoftMintBorder, CircleShape),
+                                .background(colors.softSurface)
+                                .border(1.dp, colors.softBorder, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = FinanceConstants.getCategoryIcon(preset.category),
-                                contentDescription = preset.title,
+                                contentDescription = localizedTitle,
                                 tint = FinanceConstants.getCategoryColor(preset.category),
                                 modifier = Modifier.size(20.dp)
                             )
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = preset.title.take(8),
+                            text = localizedTitle.take(10),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = colors.textPrimary
                         )
                         Text(
                             text = "$currencySymbol${preset.amount}",
                             fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = colors.textSecondary
                         )
                     }
                 }

@@ -18,22 +18,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.AlertOrange
-import com.example.ui.theme.ForestGreenDark
-import com.example.ui.theme.SoftMintBorder
-import com.example.ui.theme.SoftMintContainer
-import com.example.ui.theme.SoftMintSurface
+import com.example.ui.i18n.MyMariI18n
+import com.example.ui.theme.MyMariTheme
 
 @Composable
 fun HeaderBar(
@@ -43,6 +38,9 @@ fun HeaderBar(
     onProfileClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = MyMariTheme.colors
+    val strings = MyMariI18n.strings
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -52,19 +50,21 @@ fun HeaderBar(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.clickable { onProfileClick() }
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onProfileClick() }
         ) {
             Box(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(SoftMintContainer)
-                    .border(1.dp, SoftMintBorder, CircleShape),
+                    .background(colors.softContainer)
+                    .border(1.dp, colors.softBorder, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = if (userName.isNotBlank()) userName.take(1).uppercase() else "M",
-                    color = ForestGreenDark,
+                    color = colors.accentText,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -74,14 +74,14 @@ fun HeaderBar(
 
             Column {
                 Text(
-                    text = "Hi $userName!",
-                    color = MaterialTheme.colorScheme.onBackground,
+                    text = String.format(strings.greetingHi, userName),
+                    color = colors.textPrimary,
                     fontSize = 19.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Let's see how your money is doing today.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = strings.headerSubtitle,
+                    color = colors.textSecondary,
                     fontSize = 12.sp
                 )
             }
@@ -92,16 +92,16 @@ fun HeaderBar(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(SoftMintSurface)
-                    .border(1.dp, SoftMintBorder, CircleShape)
+                    .background(colors.softSurface)
+                    .border(1.dp, colors.softBorder, CircleShape)
                     .clickable { onSearchClick() }
                     .testTag("header_search_button"),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Search,
-                    contentDescription = "Search spending & income",
-                    tint = ForestGreenDark,
+                    contentDescription = strings.diaryTitle,
+                    tint = colors.accentText,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -110,16 +110,16 @@ fun HeaderBar(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(SoftMintSurface)
-                    .border(1.dp, SoftMintBorder, CircleShape)
+                    .background(colors.softSurface)
+                    .border(1.dp, colors.softBorder, CircleShape)
                     .clickable { onNotificationClick() }
                     .testTag("header_bell_button"),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Notifications,
-                    contentDescription = "Reminders & Settings",
-                    tint = ForestGreenDark,
+                    contentDescription = strings.dailyRemindersTitle,
+                    tint = colors.accentText,
                     modifier = Modifier.size(20.dp)
                 )
                 Box(
@@ -127,7 +127,7 @@ fun HeaderBar(
                         .size(8.dp)
                         .offset(x = 6.dp, y = (-6).dp)
                         .clip(CircleShape)
-                        .background(AlertOrange)
+                        .background(colors.alertOrange)
                 )
             }
         }

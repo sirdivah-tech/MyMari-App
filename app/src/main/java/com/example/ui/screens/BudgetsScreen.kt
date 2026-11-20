@@ -54,16 +54,9 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.FinanceConstants
 import com.example.data.remote.SavingsGoalDoc
 import com.example.ui.FinanceUiState
-import com.example.ui.theme.AlertOrange
-import com.example.ui.theme.CanvasBgLight
+import com.example.ui.i18n.MyMariI18n
 import com.example.ui.theme.EmeraldBrand
-import com.example.ui.theme.ForestGreenDark
-import com.example.ui.theme.IncomeGreen
-import com.example.ui.theme.SoftMintBorder
-import com.example.ui.theme.SoftMintContainer
-import com.example.ui.theme.SoftMintSurface
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.MyMariTheme
 import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -77,6 +70,8 @@ fun BudgetsScreen(
     onDeleteSavingsGoal: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = MyMariTheme.colors
+    val strings = MyMariI18n.strings
     val currency = uiState.userProfile.currencySymbol
     var showAddBudgetDialog by remember { mutableStateOf(false) }
     var showAddSavingsDialog by remember { mutableStateOf(false) }
@@ -85,10 +80,9 @@ fun BudgetsScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(CanvasBgLight),
+            .background(colors.canvasBg),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Title Header
         item {
             Column(
                 modifier = Modifier
@@ -96,26 +90,25 @@ fun BudgetsScreen(
                     .padding(horizontal = 20.dp, vertical = 10.dp)
             ) {
                 Text(
-                    text = "Spending Limits & Goals",
+                    text = strings.budgetsTitle,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
                 Text(
-                    text = "Set easy spending limits and save for what matters",
+                    text = strings.budgetsSubtitle,
                     fontSize = 13.sp,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
         }
 
-        // Section 1: Light Pastel Mint Overall Monthly Limit Card
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .border(1.dp, SoftMintBorder, RoundedCornerShape(24.dp)),
+                    .border(1.dp, colors.softBorder, RoundedCornerShape(24.dp)),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.Transparent)
             ) {
@@ -124,7 +117,7 @@ fun BudgetsScreen(
                         .fillMaxWidth()
                         .background(
                             brush = Brush.verticalGradient(
-                                colors = listOf(SoftMintSurface, SoftMintContainer)
+                                colors = listOf(colors.heroGradientTop, colors.heroGradientBottom)
                             )
                         )
                         .padding(20.dp)
@@ -136,23 +129,23 @@ fun BudgetsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Monthly Spending Limit",
+                                text = strings.monthlySpendingLimit,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = ForestGreenDark
+                                color = colors.accentText
                             )
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(Color.White)
-                                    .border(1.dp, SoftMintBorder, RoundedCornerShape(12.dp))
+                                    .background(colors.pillBg)
+                                    .border(1.dp, colors.softBorder, RoundedCornerShape(12.dp))
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
                                 Text(
-                                    text = "${(uiState.monthlyBudgetPercentage * 100).toInt()}% used",
+                                    text = String.format(strings.pctUsedShort, (uiState.monthlyBudgetPercentage * 100).toInt()),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = EmeraldBrand
+                                    color = colors.accentPrimary
                                 )
                             }
                         }
@@ -163,21 +156,24 @@ fun BudgetsScreen(
                             text = "$currency${String.format(Locale.US, "%,.2f", uiState.monthlyExpense)}",
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold,
-                            color = ForestGreenDark
+                            color = colors.accentText
                         )
 
                         Text(
-                            text = "spent out of $currency${String.format(Locale.US, "%,.2f", uiState.userProfile.monthlyBudgetTarget)} limit",
+                            text = String.format(
+                                strings.spentOutOfLimit,
+                                "$currency${String.format(Locale.US, "%,.2f", uiState.userProfile.monthlyBudgetTarget)}"
+                            ),
                             fontSize = 12.sp,
-                            color = TextSecondary
+                            color = colors.textSecondary
                         )
 
                         Spacer(modifier = Modifier.height(14.dp))
 
                         val pColor = when {
-                            uiState.monthlyBudgetPercentage >= 1.0f -> Color(0xFFDC2626)
-                            uiState.monthlyBudgetPercentage >= 0.8f -> AlertOrange
-                            else -> EmeraldBrand
+                            uiState.monthlyBudgetPercentage >= 1.0f -> colors.expenseRed
+                            uiState.monthlyBudgetPercentage >= 0.8f -> colors.alertOrange
+                            else -> colors.accentPrimary
                         }
 
                         LinearProgressIndicator(
@@ -187,27 +183,32 @@ fun BudgetsScreen(
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(4.dp)),
                             color = pColor,
-                            trackColor = Color.White
+                            trackColor = colors.pillBg
                         )
 
                         Spacer(modifier = Modifier.height(10.dp))
 
                         Text(
                             text = if (uiState.monthlyBudgetRemaining >= 0) {
-                                "Still left to spend: $currency${String.format(Locale.US, "%,.2f", uiState.monthlyBudgetRemaining)}"
+                                String.format(
+                                    strings.stillLeftToSpend,
+                                    "$currency${String.format(Locale.US, "%,.2f", uiState.monthlyBudgetRemaining)}"
+                                )
                             } else {
-                                "Over your limit by $currency${String.format(Locale.US, "%,.2f", -uiState.monthlyBudgetRemaining)}"
+                                String.format(
+                                    strings.overLimitBy,
+                                    "$currency${String.format(Locale.US, "%,.2f", -uiState.monthlyBudgetRemaining)}"
+                                )
                             },
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (uiState.monthlyBudgetRemaining >= 0) ForestGreenDark else Color(0xFFDC2626)
+                            color = if (uiState.monthlyBudgetRemaining >= 0) colors.accentText else colors.expenseRed
                         )
                     }
                 }
             }
         }
 
-        // Section 2: Limits by Category Header + Button
         item {
             Row(
                 modifier = Modifier
@@ -217,17 +218,17 @@ fun BudgetsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Limits by Category",
+                    text = strings.limitsByCategory,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
 
                 Text(
-                    text = "+ Add Limit",
+                    text = strings.addLimitBtn,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = EmeraldBrand,
+                    color = colors.accentPrimary,
                     modifier = Modifier
                         .clickable { showAddBudgetDialog = true }
                         .testTag("btn_add_category_budget")
@@ -235,16 +236,15 @@ fun BudgetsScreen(
             }
         }
 
-        // Category Limits List
         if (uiState.budgets.isEmpty()) {
             item {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
-                        .border(1.dp, SoftMintBorder, RoundedCornerShape(18.dp)),
+                        .border(1.dp, colors.softBorder, RoundedCornerShape(18.dp)),
                     shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = colors.cardBg)
                 ) {
                     Column(
                         modifier = Modifier
@@ -253,16 +253,16 @@ fun BudgetsScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "No category limits yet",
+                            text = strings.noCategoryLimitsYet,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Set limits for Groceries, Canteen, Transport, or Airtime so MyMari warns you when you get close.",
+                            text = strings.noCategoryLimitsTip,
                             fontSize = 12.sp,
-                            color = TextSecondary,
+                            color = colors.textSecondary,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -270,17 +270,19 @@ fun BudgetsScreen(
             }
         } else {
             items(uiState.budgets, key = { it.id }) { budget ->
-                val spent = uiState.categorySpendingMonth[budget.category ?: ""] ?: 0.0
+                val catKey = budget.category ?: ""
+                val spent = uiState.categorySpendingMonth[catKey] ?: 0.0
                 val ratio = if (budget.amount > 0) (spent / budget.amount).toFloat() else 0f
                 val remaining = budget.amount - spent
+                val displayName = if (budget.name == catKey) strings.categoryLabel(catKey) else budget.name
 
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
-                        .border(1.dp, SoftMintBorder, RoundedCornerShape(18.dp)),
+                        .border(1.dp, colors.softBorder, RoundedCornerShape(18.dp)),
                     shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = colors.cardBg)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -294,29 +296,32 @@ fun BudgetsScreen(
                                         .size(38.dp)
                                         .clip(CircleShape)
                                         .background(
-                                            FinanceConstants.getCategoryColor(budget.category ?: "").copy(alpha = 0.14f)
+                                            FinanceConstants.getCategoryColor(catKey).copy(alpha = 0.14f)
                                         ),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = FinanceConstants.getCategoryIcon(budget.category ?: ""),
-                                        contentDescription = budget.name,
-                                        tint = FinanceConstants.getCategoryColor(budget.category ?: ""),
+                                        imageVector = FinanceConstants.getCategoryIcon(catKey),
+                                        contentDescription = displayName,
+                                        tint = FinanceConstants.getCategoryColor(catKey),
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column {
                                     Text(
-                                        text = budget.name,
+                                        text = displayName,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = TextPrimary
+                                        color = colors.textPrimary
                                     )
                                     Text(
-                                        text = "Limit: $currency${String.format(Locale.US, "%,.2f", budget.amount)}",
+                                        text = String.format(
+                                            strings.limitPrefix,
+                                            "$currency${String.format(Locale.US, "%,.2f", budget.amount)}"
+                                        ),
                                         fontSize = 11.sp,
-                                        color = TextSecondary
+                                        color = colors.textSecondary
                                     )
                                 }
                             }
@@ -327,8 +332,8 @@ fun BudgetsScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Delete,
-                                    contentDescription = "Remove Limit",
-                                    tint = Color(0xFFEF4444),
+                                    contentDescription = strings.delete,
+                                    tint = colors.expenseRed,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -337,9 +342,9 @@ fun BudgetsScreen(
                         Spacer(modifier = Modifier.height(10.dp))
 
                         val bColor = when {
-                            ratio >= 1.0f -> Color(0xFFDC2626)
-                            ratio >= 0.8f -> AlertOrange
-                            else -> IncomeGreen
+                            ratio >= 1.0f -> colors.expenseRed
+                            ratio >= 0.8f -> colors.alertOrange
+                            else -> colors.incomeGreen
                         }
 
                         LinearProgressIndicator(
@@ -349,7 +354,7 @@ fun BudgetsScreen(
                                 .height(6.dp)
                                 .clip(RoundedCornerShape(3.dp)),
                             color = bColor,
-                            trackColor = SoftMintSurface
+                            trackColor = colors.softSurface
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -359,16 +364,24 @@ fun BudgetsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Spent: $currency${String.format(Locale.US, "%,.2f", spent)} (${(ratio * 100).toInt()}%)",
+                                text = String.format(
+                                    strings.spentPrefix,
+                                    "$currency${String.format(Locale.US, "%,.2f", spent)}",
+                                    (ratio * 100).toInt()
+                                ),
                                 fontSize = 11.sp,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
 
                             Text(
-                                text = if (remaining >= 0) "$currency${String.format(Locale.US, "%,.2f", remaining)} left" else "Over by $currency${String.format(Locale.US, "%,.2f", -remaining)}",
+                                text = if (remaining >= 0) {
+                                    String.format(strings.leftSuffix, "$currency${String.format(Locale.US, "%,.2f", remaining)}")
+                                } else {
+                                    String.format(strings.overByPrefix, "$currency${String.format(Locale.US, "%,.2f", -remaining)}")
+                                },
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (remaining >= 0) ForestGreenDark else Color(0xFFDC2626)
+                                color = if (remaining >= 0) colors.accentText else colors.expenseRed
                             )
                         }
                     }
@@ -376,7 +389,6 @@ fun BudgetsScreen(
             }
         }
 
-        // Section 3: Things I'm Saving For Header + Button
         item {
             Row(
                 modifier = Modifier
@@ -386,17 +398,17 @@ fun BudgetsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Things I'm Saving For",
+                    text = strings.thingsSavingFor,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
 
                 Text(
-                    text = "+ New Goal",
+                    text = strings.newGoalBtn,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = EmeraldBrand,
+                    color = colors.accentPrimary,
                     modifier = Modifier
                         .clickable { showAddSavingsDialog = true }
                         .testTag("btn_new_savings_goal")
@@ -404,16 +416,15 @@ fun BudgetsScreen(
             }
         }
 
-        // Savings Goals List
         if (uiState.savingsGoals.isEmpty()) {
             item {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
-                        .border(1.dp, SoftMintBorder, RoundedCornerShape(18.dp)),
+                        .border(1.dp, colors.softBorder, RoundedCornerShape(18.dp)),
                     shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = colors.cardBg)
                 ) {
                     Column(
                         modifier = Modifier
@@ -422,16 +433,16 @@ fun BudgetsScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "No savings goals yet",
+                            text = strings.noSavingsGoalsYet,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Save little by little for an Emergency Fund, Laptop, Textbooks, or Semester Break!",
+                            text = strings.noSavingsGoalsTip,
                             fontSize = 12.sp,
-                            color = TextSecondary,
+                            color = colors.textSecondary,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -445,9 +456,9 @@ fun BudgetsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
-                        .border(1.dp, SoftMintBorder, RoundedCornerShape(18.dp)),
+                        .border(1.dp, colors.softBorder, RoundedCornerShape(18.dp)),
                     shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = colors.cardBg)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -460,13 +471,13 @@ fun BudgetsScreen(
                                     modifier = Modifier
                                         .size(40.dp)
                                         .clip(CircleShape)
-                                        .background(SoftMintContainer),
+                                        .background(colors.softContainer),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Savings,
                                         contentDescription = goal.name,
-                                        tint = ForestGreenDark,
+                                        tint = colors.accentText,
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
@@ -476,13 +487,13 @@ fun BudgetsScreen(
                                         text = goal.name,
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = TextPrimary
+                                        color = colors.textPrimary
                                     )
                                     if (goal.notes.isNotBlank()) {
                                         Text(
                                             text = goal.notes,
                                             fontSize = 11.sp,
-                                            color = TextSecondary,
+                                            color = colors.textSecondary,
                                             maxLines = 1
                                         )
                                     }
@@ -498,7 +509,7 @@ fun BudgetsScreen(
                                         .padding(horizontal = 10.dp, vertical = 6.dp)
                                 ) {
                                     Text(
-                                        text = "+ Add Money",
+                                        text = strings.addMoneyBtn,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White
@@ -511,8 +522,8 @@ fun BudgetsScreen(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete Goal",
-                                        tint = Color(0xFFEF4444),
+                                        contentDescription = strings.delete,
+                                        tint = colors.expenseRed,
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
@@ -527,8 +538,8 @@ fun BudgetsScreen(
                                 .fillMaxWidth()
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(4.dp)),
-                            color = IncomeGreen,
-                            trackColor = SoftMintSurface
+                            color = colors.incomeGreen,
+                            trackColor = colors.softSurface
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -538,16 +549,23 @@ fun BudgetsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Saved: $currency${String.format(Locale.US, "%,.2f", goal.currentAmount)}",
+                                text = String.format(
+                                    strings.savedPrefix,
+                                    "$currency${String.format(Locale.US, "%,.2f", goal.currentAmount)}"
+                                ),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = ForestGreenDark
+                                color = colors.accentText
                             )
 
                             Text(
-                                text = "Goal: $currency${String.format(Locale.US, "%,.2f", goal.targetAmount)} (${(ratio * 100).toInt()}%)",
+                                text = String.format(
+                                    strings.goalPrefix,
+                                    "$currency${String.format(Locale.US, "%,.2f", goal.targetAmount)}",
+                                    (ratio * 100).toInt()
+                                ),
                                 fontSize = 12.sp,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                         }
                     }
@@ -560,7 +578,6 @@ fun BudgetsScreen(
         }
     }
 
-    // Dialog: Add Category Limit
     if (showAddBudgetDialog) {
         var bName by remember { mutableStateOf("") }
         var bCategory by remember { mutableStateOf(FinanceConstants.EXPENSE_CATEGORIES.first()) }
@@ -568,15 +585,15 @@ fun BudgetsScreen(
 
         AlertDialog(
             onDismissRequest = { showAddBudgetDialog = false },
-            containerColor = Color.White,
-            title = { Text("Add Category Limit", fontWeight = FontWeight.Bold, color = TextPrimary) },
+            containerColor = colors.cardBg,
+            title = { Text(strings.addCategoryLimitDialogTitle, fontWeight = FontWeight.Bold, color = colors.textPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
                         value = bName,
                         onValueChange = { bName = it },
-                        label = { Text("Label (Optional)") },
-                        placeholder = { Text("e.g. Food & Snacks") },
+                        label = { Text(strings.labelOptional) },
+                        placeholder = { Text(strings.placeholderBudgetLabel) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp)
@@ -585,7 +602,7 @@ fun BudgetsScreen(
                     OutlinedTextField(
                         value = bAmount,
                         onValueChange = { bAmount = it },
-                        label = { Text("Monthly Limit ($currency)") },
+                        label = { Text(String.format(strings.monthlyLimitCurrency, currency)) },
                         placeholder = { Text("e.g. 80.00") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
@@ -594,10 +611,10 @@ fun BudgetsScreen(
                     )
 
                     Text(
-                        text = "Pick a category",
+                        text = strings.pickCategory,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -608,16 +625,16 @@ fun BudgetsScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(if (isSel) SoftMintContainer else SoftMintSurface)
-                                    .border(1.dp, if (isSel) EmeraldBrand else SoftMintBorder, RoundedCornerShape(10.dp))
+                                    .background(if (isSel) colors.softContainer else colors.softSurface)
+                                    .border(1.dp, if (isSel) colors.accentPrimary else colors.softBorder, RoundedCornerShape(10.dp))
                                     .clickable { bCategory = cat }
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
                                 Text(
-                                    text = cat,
+                                    text = strings.categoryLabel(cat),
                                     fontSize = 11.sp,
                                     fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (isSel) ForestGreenDark else TextPrimary
+                                    color = if (isSel) colors.accentText else colors.textPrimary
                                 )
                             }
                         }
@@ -638,18 +655,17 @@ fun BudgetsScreen(
                         contentColor = Color.White
                     )
                 ) {
-                    Text("Save Limit")
+                    Text(strings.saveLimitBtn)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showAddBudgetDialog = false }) {
-                    Text("Cancel")
+                    Text(strings.cancel)
                 }
             }
         )
     }
 
-    // Dialog: New Savings Goal
     if (showAddSavingsDialog) {
         var gName by remember { mutableStateOf("") }
         var gTarget by remember { mutableStateOf("") }
@@ -657,15 +673,15 @@ fun BudgetsScreen(
 
         AlertDialog(
             onDismissRequest = { showAddSavingsDialog = false },
-            containerColor = Color.White,
-            title = { Text("New Savings Goal", fontWeight = FontWeight.Bold, color = TextPrimary) },
+            containerColor = colors.cardBg,
+            title = { Text(strings.newSavingsGoalDialogTitle, fontWeight = FontWeight.Bold, color = colors.textPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
                         value = gName,
                         onValueChange = { gName = it },
-                        label = { Text("What are you saving for?") },
-                        placeholder = { Text("e.g. New Laptop or Textbooks") },
+                        label = { Text(strings.whatSavingFor) },
+                        placeholder = { Text(strings.placeholderGoalName) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp)
@@ -674,7 +690,7 @@ fun BudgetsScreen(
                     OutlinedTextField(
                         value = gTarget,
                         onValueChange = { gTarget = it },
-                        label = { Text("How much do you need? ($currency)") },
+                        label = { Text(String.format(strings.howMuchNeed, currency)) },
                         placeholder = { Text("e.g. 450.00") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
@@ -685,8 +701,8 @@ fun BudgetsScreen(
                     OutlinedTextField(
                         value = gNotes,
                         onValueChange = { gNotes = it },
-                        label = { Text("Short note (Optional)") },
-                        placeholder = { Text("e.g. For next semester") },
+                        label = { Text(strings.shortNoteOptional) },
+                        placeholder = { Text(strings.placeholderGoalNote) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp)
                     )
@@ -706,37 +722,36 @@ fun BudgetsScreen(
                         contentColor = Color.White
                     )
                 ) {
-                    Text("Create Goal")
+                    Text(strings.createGoalBtn)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showAddSavingsDialog = false }) {
-                    Text("Cancel")
+                    Text(strings.cancel)
                 }
             }
         )
     }
 
-    // Dialog: Add Money to Savings Goal
     contributingGoal?.let { goal ->
         var cAmount by remember { mutableStateOf("") }
 
         AlertDialog(
             onDismissRequest = { contributingGoal = null },
-            containerColor = Color.White,
-            title = { Text("Save for ${goal.name}", fontWeight = FontWeight.Bold, color = TextPrimary) },
+            containerColor = colors.cardBg,
+            title = { Text(String.format(strings.saveForGoalTitle, goal.name), fontWeight = FontWeight.Bold, color = colors.textPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Move money from your spending balance into this savings goal.",
+                        text = strings.saveForGoalDesc,
                         fontSize = 12.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     OutlinedTextField(
                         value = cAmount,
                         onValueChange = { cAmount = it },
-                        label = { Text("Amount to save ($currency)") },
+                        label = { Text(String.format(strings.amountToSave, currency)) },
                         placeholder = { Text("e.g. 20.00") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
@@ -759,12 +774,12 @@ fun BudgetsScreen(
                         contentColor = Color.White
                     )
                 ) {
-                    Text("Save Now")
+                    Text(strings.saveNowBtn)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { contributingGoal = null }) {
-                    Text("Cancel")
+                    Text(strings.cancel)
                 }
             }
         )

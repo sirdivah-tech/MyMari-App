@@ -26,7 +26,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -46,15 +45,8 @@ import com.example.ui.components.HeaderBar
 import com.example.ui.components.QuickPresetsRow
 import com.example.ui.components.TransactionRow
 import com.example.ui.components.WalletBalanceCard
-import com.example.ui.theme.AlertOrange
-import com.example.ui.theme.CanvasBgLight
-import com.example.ui.theme.EmeraldBrand
-import com.example.ui.theme.ForestGreenDark
-import com.example.ui.theme.IncomeGreen
-import com.example.ui.theme.SoftMintBorder
-import com.example.ui.theme.SoftMintSurface
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
+import com.example.ui.i18n.MyMariI18n
+import com.example.ui.theme.MyMariTheme
 import java.util.Calendar
 import java.util.Locale
 
@@ -72,21 +64,17 @@ fun HomeScreen(
     onDismissBudgetAlert: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = MyMariTheme.colors
+    val strings = MyMariI18n.strings
     val currency = uiState.userProfile.currencySymbol
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
 
-    val motivationalMessages = listOf(
-        "Every dollar has a job. Keep your money in mind!",
-        "Small savings today help you handle tomorrow.",
-        "Track each snack and ride so nothing disappears.",
-        "You're doing great taking charge of your student money!"
-    )
-    val motivation = motivationalMessages[(uiState.transactions.size + hour) % motivationalMessages.size]
+    val motivation = strings.motivationalMessages[(uiState.transactions.size + hour) % strings.motivationalMessages.size]
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(CanvasBgLight),
+            .background(colors.canvasBg),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // 1. Top Header
@@ -107,7 +95,7 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2))
+                    colors = CardDefaults.cardColors(containerColor = colors.errorBg)
                 ) {
                     Row(
                         modifier = Modifier
@@ -119,25 +107,31 @@ fun HomeScreen(
                         Text(
                             text = uiState.statusError,
                             fontSize = 12.sp,
-                            color = Color(0xFFB91C1C),
+                            color = colors.errorText,
                             modifier = Modifier.weight(1f)
                         )
                         IconButton(onClick = onDismissStatusError, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Close, contentDescription = "Dismiss error", tint = Color(0xFFB91C1C))
+                            Icon(Icons.Default.Close, contentDescription = strings.close, tint = colors.errorText)
                         }
                     }
                 }
             }
         }
 
-        if (!uiState.budgetAlertMessage.isNullOrBlank()) {
+        uiState.budgetAlert?.let { alert ->
+            val catDisplay = strings.categoryLabel(alert.category)
+            val alertMsg = when {
+                alert.levelPct >= 100 -> String.format(strings.budgetAlertReached, catDisplay)
+                alert.levelPct >= 80 -> String.format(strings.budgetAlert80, catDisplay)
+                else -> String.format(strings.budgetAlert50, catDisplay)
+            }
             item {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7ED))
+                    colors = CardDefaults.cardColors(containerColor = colors.warningBg)
                 ) {
                     Row(
                         modifier = Modifier
@@ -149,20 +143,20 @@ fun HomeScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                             Icon(
                                 imageVector = Icons.Default.Warning,
-                                contentDescription = "Limit alert",
-                                tint = AlertOrange,
+                                contentDescription = null,
+                                tint = colors.alertOrange,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = uiState.budgetAlertMessage,
+                                text = alertMsg,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = Color(0xFF9A3412)
+                                color = colors.warningText
                             )
                         }
                         IconButton(onClick = onDismissBudgetAlert, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Close, contentDescription = "Dismiss alert", tint = Color(0xFF9A3412))
+                            Icon(Icons.Default.Close, contentDescription = strings.close, tint = colors.warningText)
                         }
                     }
                 }
@@ -175,9 +169,9 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .border(1.dp, SoftMintBorder, RoundedCornerShape(16.dp)),
+                    .border(1.dp, colors.softBorder, RoundedCornerShape(16.dp)),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = SoftMintSurface)
+                colors = CardDefaults.cardColors(containerColor = colors.softSurface)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -185,8 +179,8 @@ fun HomeScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Lightbulb,
-                        contentDescription = "Tip",
-                        tint = EmeraldBrand,
+                        contentDescription = null,
+                        tint = colors.accentPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
@@ -194,13 +188,13 @@ fun HomeScreen(
                         text = motivation,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
             }
         }
 
-        // 3. Light Pastel Mint Balance Card
+        // 3. Balance Hero Card
         item {
             WalletBalanceCard(
                 currencySymbol = currency,
@@ -213,15 +207,15 @@ fun HomeScreen(
             )
         }
 
-        // 4. Plain-English Monthly Limit Card
+        // 4. Monthly Limit Card
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .border(1.dp, SoftMintBorder, RoundedCornerShape(20.dp)),
+                    .border(1.dp, colors.softBorder, RoundedCornerShape(20.dp)),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = colors.cardBg),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -231,25 +225,25 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "This Month's Spending Limit",
+                            text = strings.thisMonthLimitTitle,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                         Text(
-                            text = "${(uiState.monthlyBudgetPercentage * 100).toInt()}% used",
+                            text = String.format(strings.pctUsedShort, (uiState.monthlyBudgetPercentage * 100).toInt()),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (uiState.monthlyBudgetPercentage >= 0.8f) AlertOrange else EmeraldBrand
+                            color = if (uiState.monthlyBudgetPercentage >= 0.8f) colors.alertOrange else colors.accentPrimary
                         )
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
 
                     val progressColor = when {
-                        uiState.monthlyBudgetPercentage >= 1.0f -> Color(0xFFDC2626)
-                        uiState.monthlyBudgetPercentage >= 0.8f -> AlertOrange
-                        else -> IncomeGreen
+                        uiState.monthlyBudgetPercentage >= 1.0f -> colors.expenseRed
+                        uiState.monthlyBudgetPercentage >= 0.8f -> colors.alertOrange
+                        else -> colors.incomeGreen
                     }
 
                     LinearProgressIndicator(
@@ -259,7 +253,7 @@ fun HomeScreen(
                             .height(8.dp)
                             .clip(RoundedCornerShape(4.dp)),
                         color = progressColor,
-                        trackColor = SoftMintSurface
+                        trackColor = colors.softSurface
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -268,20 +262,20 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        SummaryStatItem("Limit", "$currency${String.format(Locale.US, "%,.2f", uiState.userProfile.monthlyBudgetTarget)}", TextPrimary)
-                        SummaryStatItem("Spent", "$currency${String.format(Locale.US, "%,.2f", uiState.monthlyExpense)}", TextPrimary)
+                        SummaryStatItem(strings.statLimit, "$currency${String.format(Locale.US, "%,.2f", uiState.userProfile.monthlyBudgetTarget)}", colors.textPrimary)
+                        SummaryStatItem(strings.statSpent, "$currency${String.format(Locale.US, "%,.2f", uiState.monthlyExpense)}", colors.textPrimary)
                         SummaryStatItem(
-                            "Left",
+                            strings.statLeft,
                             "$currency${String.format(Locale.US, "%,.2f", uiState.monthlyBudgetRemaining)}",
-                            if (uiState.monthlyBudgetRemaining < 0) Color(0xFFDC2626) else IncomeGreen
+                            if (uiState.monthlyBudgetRemaining < 0) colors.expenseRed else colors.incomeGreen
                         )
-                        SummaryStatItem("Saved", "$currency${String.format(Locale.US, "%,.2f", uiState.totalSaved)}", ForestGreenDark)
+                        SummaryStatItem(strings.statSaved, "$currency${String.format(Locale.US, "%,.2f", uiState.totalSaved)}", colors.accentText)
                     }
                 }
             }
         }
 
-        // 5. Quick Presets Row (1-Tap Common Buys + Voice Speak/Add)
+        // 5. Quick Presets Row
         item {
             QuickPresetsRow(
                 currencySymbol = currency,
@@ -300,17 +294,17 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Recent Money Activity",
+                    text = strings.recentActivityTitle,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
 
                 Text(
-                    text = "See All",
+                    text = strings.seeAll,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = EmeraldBrand,
+                    color = colors.accentPrimary,
                     modifier = Modifier
                         .clickable { onNavigate(Screen.DIARY) }
                         .testTag("see_all_transactions")
@@ -326,9 +320,9 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
-                        .border(1.dp, SoftMintBorder, RoundedCornerShape(18.dp)),
+                        .border(1.dp, colors.softBorder, RoundedCornerShape(18.dp)),
                     shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = colors.cardBg)
                 ) {
                     Column(
                         modifier = Modifier
@@ -337,16 +331,16 @@ fun HomeScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Nothing added yet",
+                            text = strings.nothingAddedYet,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Tap 'I Spent', 'Got Paid', or 'Speak/Add' above to write down your first money note.",
+                            text = strings.emptyHomeTip,
                             fontSize = 12.sp,
-                            color = TextSecondary,
+                            color = colors.textSecondary,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -373,11 +367,12 @@ fun HomeScreen(
 
 @Composable
 private fun SummaryStatItem(label: String, value: String, valueColor: Color) {
+    val colors = MyMariTheme.colors
     Column {
         Text(
             text = label,
             fontSize = 11.sp,
-            color = TextSecondary
+            color = colors.textSecondary
         )
         Text(
             text = value,

@@ -2,16 +2,19 @@ package com.example
 
 import android.Manifest
 import android.content.Context
+import android.graphics.Color as AndroidColor
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +28,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -42,6 +46,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.data.ai.VoiceTranscriptionRepository
+import com.example.data.preferences.AppLanguage
+import com.example.data.preferences.AppPreferencesRepository
+import com.example.data.preferences.ThemeMode
 import com.example.data.remote.FirestoreFinanceRepository
 import com.example.data.remote.UserProfileDoc
 import com.example.firebase.configureAppCheck
@@ -55,19 +62,21 @@ import com.example.ui.auth.signOut
 import com.example.ui.components.AddTransactionSheet
 import com.example.ui.components.EditTransactionDialog
 import com.example.ui.components.FloatingNavBar
+import com.example.ui.i18n.LocalAppStrings
+import com.example.ui.i18n.MyMariI18n
+import com.example.ui.i18n.stringsForLanguage
 import com.example.ui.screens.BudgetsScreen
 import com.example.ui.screens.DiaryScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.OnboardingScreen
 import com.example.ui.screens.ProfileScreen
 import com.example.ui.screens.ReportsScreen
-import com.example.ui.theme.CanvasBgLight
-import com.example.ui.theme.EmeraldBrand
 import com.example.ui.theme.MyApplicationTheme
-import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.MyMariTheme
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,22 +85,73 @@ class MainActivity : ComponentActivity() {
         configureAppCheck(this, intent)
         NotificationHelper.createNotificationChannel(this)
         enableEdgeToEdge()
+
+        val prefsRepository = AppPreferencesRepository(applicationContext)
+
         setContent {
-            MyApplicationTheme(darkTheme = false) {
-                MyMariRoot()
+            val scope = rememberCoroutineScope()
+            val themeMode by prefsRepository.themeMode.collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
+            val appLanguage by prefsRepository.appLanguage.collectAsStateWithLifecycle(initialValue = AppLanguage.ENGLISH)
+
+            val systemDark = isSystemInDarkTheme()
+            val useDarkTheme = when (themeMode) {
+                ThemeMode.SYSTEM -> systemDark
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+
+            LaunchedEffect(useDarkTheme) {
+                val barStyle = if (useDarkTheme) {
+                    SystemBarStyle.dark(AndroidColor.TRANSPARENT)
+                } else {
+                    SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
+                }
+                enableEdgeToEdge(
+                    statusBarStyle = barStyle,
+                    navigationBarStyle = barStyle
+                )
+            }
+
+            val strings = remember(appLanguage) { stringsForLanguage(appLanguage) }
+
+            MyApplicationTheme(darkTheme = useDarkTheme) {
+                CompositionLocalProvider(LocalAppStrings provides strings) {
+                    MyMariRoot(
+                        themeMode = themeMode,
+                        onThemeModeChange = { mode ->
+                            scope.launch { prefsRepository.setThemeMode(mode) }
+                        },
+                        appLanguage = appLanguage,
+                        onAppLanguageChange = { lang ->
+                            scope.launch { prefsRepository.setAppLanguage(lang) }
+                        }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun MyMariRoot() {
+fun MyMariRoot(
+    themeMode: ThemeMode,
+    onThemeModeChange: (ThemeMode) -> Unit,
+    appLanguage: AppLanguage,
+    onAppLanguageChange: (AppLanguage) -> Unit
+) {
     val currentUser by Firebase.auth.authStateFlow()
         .collectAsStateWithLifecycle(initialValue = Firebase.auth.currentUser)
+    val strings = MyMariI18n.strings
 
     val user = currentUser
     if (user == null) {
-        AuthScreen(onAuthSuccess = { /* authStateFlow updates automatically */ })
+        AuthScreen(
+            onAuthSuccess = { /* authStateFlow updates automatically */ },
+            themeMode = themeMode,
+            onThemeModeChange = onThemeModeChange,
+            appLanguage = appLanguage,
+            onAppLanguageChange = onAppLanguageChange
+        )
     } else {
         key(user.uid) {
             val context = LocalContext.current
@@ -108,7 +168,7 @@ fun MyMariRoot() {
                             repository = repository,
                             voiceRepository = voiceRepository,
                             currentUserId = user.uid,
-                            initialDisplayName = user.displayName ?: "Student",
+                            initialDisplayName = user.displayName ?: strings.studentDefaultName,
                             initialEmail = user.email ?: ""
                         )
                     }
@@ -116,7 +176,11 @@ fun MyMariRoot() {
             )
             MyMariApp(
                 viewModel = viewModel,
-                initialName = user.displayName ?: "Student"
+                initialName = user.displayName ?: strings.studentDefaultName,
+                themeMode = themeMode,
+                onThemeModeChange = onThemeModeChange,
+                appLanguage = appLanguage,
+                onAppLanguageChange = onAppLanguageChange
             )
         }
     }
@@ -125,12 +189,18 @@ fun MyMariRoot() {
 @Composable
 fun MyMariApp(
     viewModel: FinanceViewModel,
-    initialName: String
+    initialName: String,
+    themeMode: ThemeMode,
+    onThemeModeChange: (ThemeMode) -> Unit,
+    appLanguage: AppLanguage,
+    onAppLanguageChange: (AppLanguage) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val credentialManager = remember { CredentialManager.create(context) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val colors = MyMariTheme.colors
+    val strings = MyMariI18n.strings
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -162,21 +232,21 @@ fun MyMariApp(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(CanvasBgLight),
+                .background(colors.canvasBg),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(36.dp),
-                    color = EmeraldBrand,
+                    color = colors.accentPrimary,
                     strokeWidth = 3.dp
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Loading your MyMari wallet...",
+                    text = strings.loadingWallet,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
         }
@@ -186,6 +256,10 @@ fun MyMariApp(
     if (uiState.showOnboarding) {
         OnboardingScreen(
             initialName = initialName,
+            themeMode = themeMode,
+            onThemeModeChange = onThemeModeChange,
+            appLanguage = appLanguage,
+            onAppLanguageChange = onAppLanguageChange,
             onComplete = { name, university, currency, symbol, startBal, budget, loadDemo ->
                 viewModel.completeOnboarding(
                     fullName = name,
@@ -201,13 +275,13 @@ fun MyMariApp(
     } else {
         Scaffold(
             contentWindowInsets = WindowInsets.systemBars,
-            containerColor = CanvasBgLight,
+            containerColor = colors.canvasBg,
             modifier = Modifier.fillMaxSize()
         ) { innerPadding ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(CanvasBgLight)
+                    .background(colors.canvasBg)
                     .padding(innerPadding)
             ) {
                 when (uiState.activeScreen) {
@@ -257,20 +331,24 @@ fun MyMariApp(
 
                     Screen.PROFILE -> ProfileScreen(
                         uiState = uiState,
+                        themeMode = themeMode,
+                        onThemeModeChange = onThemeModeChange,
+                        appLanguage = appLanguage,
+                        onAppLanguageChange = onAppLanguageChange,
                         onSaveProfile = { profile ->
                             viewModel.saveProfile(profile)
                             syncReminderAlarms(context, profile)
                         },
                         onTestReminder = { isMorning ->
                             val title = if (isMorning) {
-                                "Good morning from MyMari!"
+                                strings.reminderMorningTitle
                             } else {
-                                "Evening MyMari Check-in"
+                                strings.reminderEveningTitle
                             }
                             val msg = if (isMorning) {
-                                "Check your remaining money for today before heading to class."
+                                strings.reminderMorningMsg
                             } else {
-                                "Take 30 seconds to write down or speak today's spending!"
+                                strings.reminderEveningMsg
                             }
                             NotificationHelper.showNotification(
                                 context = context,
@@ -278,7 +356,7 @@ fun MyMariApp(
                                 title = title,
                                 message = msg
                             )
-                            Toast.makeText(context, "Sent test notification!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, strings.testNotificationSent, Toast.LENGTH_SHORT).show()
                         },
                         onLoadDemoData = { viewModel.loadDemoData() },
                         onClearAllData = { viewModel.clearAllData() },

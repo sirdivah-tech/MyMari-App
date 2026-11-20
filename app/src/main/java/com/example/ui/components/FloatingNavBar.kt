@@ -39,11 +39,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.Screen
-import com.example.ui.theme.ForestGreenDark
-import com.example.ui.theme.NavDockBgLight
-import com.example.ui.theme.NavDockBorderLight
-import com.example.ui.theme.SoftMintContainer
-import com.example.ui.theme.TextSecondary
+import com.example.ui.i18n.MyMariI18n
+import com.example.ui.theme.MyMariTheme
 
 data class NavItem(
     val screen: Screen,
@@ -58,12 +55,15 @@ fun FloatingNavBar(
     onScreenSelected: (Screen) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = MyMariTheme.colors
+    val strings = MyMariI18n.strings
+
     val items = listOf(
-        NavItem(Screen.HOME, "Home", Icons.Default.Home, "nav_home"),
-        NavItem(Screen.DIARY, "Diary", Icons.Default.Book, "nav_diary"),
-        NavItem(Screen.BUDGETS, "Limits", Icons.Default.AccountBalanceWallet, "nav_budgets"),
-        NavItem(Screen.REPORTS, "Summary", Icons.Default.BarChart, "nav_reports"),
-        NavItem(Screen.PROFILE, "Me", Icons.Default.Person, "nav_profile")
+        NavItem(Screen.HOME, strings.navHome, Icons.Default.Home, "nav_home"),
+        NavItem(Screen.DIARY, strings.navDiary, Icons.Default.Book, "nav_diary"),
+        NavItem(Screen.BUDGETS, strings.navLimits, Icons.Default.AccountBalanceWallet, "nav_budgets"),
+        NavItem(Screen.REPORTS, strings.navSummary, Icons.Default.BarChart, "nav_reports"),
+        NavItem(Screen.PROFILE, strings.navMe, Icons.Default.Person, "nav_profile")
     )
 
     Box(
@@ -75,10 +75,10 @@ fun FloatingNavBar(
     ) {
         Surface(
             modifier = Modifier
-                .shadow(elevation = 10.dp, shape = RoundedCornerShape(32.dp), spotColor = Color(0x3314532D))
+                .shadow(elevation = 10.dp, shape = RoundedCornerShape(32.dp), spotColor = colors.navDockShadow)
                 .clip(RoundedCornerShape(32.dp))
-                .border(1.dp, NavDockBorderLight, RoundedCornerShape(32.dp)),
-            color = NavDockBgLight
+                .border(1.dp, colors.navDockBorder, RoundedCornerShape(32.dp)),
+            color = colors.navDockBg
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
@@ -88,12 +88,12 @@ fun FloatingNavBar(
                 items.forEach { item ->
                     val isSelected = currentScreen == item.screen
                     val bgColor by animateColorAsState(
-                        targetValue = if (isSelected) SoftMintContainer else Color.Transparent,
+                        targetValue = if (isSelected) colors.softContainer else Color.Transparent,
                         animationSpec = tween(220),
                         label = "nav_bg"
                     )
                     val iconColor by animateColorAsState(
-                        targetValue = if (isSelected) ForestGreenDark else TextSecondary,
+                        targetValue = if (isSelected) colors.accentText else colors.textSecondary,
                         animationSpec = tween(220),
                         label = "nav_icon"
                     )
@@ -124,7 +124,7 @@ fun FloatingNavBar(
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = item.title,
-                                    color = ForestGreenDark,
+                                    color = colors.accentText,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold
                                 )

@@ -16,7 +16,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,12 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.FinanceConstants
 import com.example.data.remote.TransactionDoc
+import com.example.ui.i18n.MyMariI18n
 import com.example.ui.theme.EmeraldBrand
-import com.example.ui.theme.ForestGreenDark
-import com.example.ui.theme.SoftMintBorder
-import com.example.ui.theme.SoftMintContainer
-import com.example.ui.theme.SoftMintSurface
-import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.MyMariTheme
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -50,6 +46,8 @@ fun EditTransactionDialog(
     onSave: (TransactionDoc) -> Unit,
     onDelete: (String) -> Unit
 ) {
+    val colors = MyMariTheme.colors
+    val strings = MyMariI18n.strings
     var amountText by remember { mutableStateOf(transaction.amount.toString()) }
     var descriptionText by remember { mutableStateOf(transaction.description) }
     var notesText by remember { mutableStateOf(transaction.notes) }
@@ -64,12 +62,12 @@ fun EditTransactionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color.White,
+        containerColor = colors.cardBg,
         title = {
             Text(
-                text = if (transaction.type == "INCOME") "Edit Money In" else "Edit What I Spent",
+                text = if (transaction.type == "INCOME") strings.editMoneyIn else strings.editWhatISpent,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = colors.textPrimary
             )
         },
         text = {
@@ -77,7 +75,7 @@ fun EditTransactionDialog(
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it },
-                    label = { Text("How much? ($currencySymbol)") },
+                    label = { Text("${strings.howMuch} ($currencySymbol)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -87,17 +85,17 @@ fun EditTransactionDialog(
                 OutlinedTextField(
                     value = descriptionText,
                     onValueChange = { descriptionText = it },
-                    label = { Text("What was it for?") },
+                    label = { Text(strings.whatWasItFor) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp)
                 )
 
                 Text(
-                    text = if (transaction.type == "INCOME") "Where it came from" else "Category",
+                    text = if (transaction.type == "INCOME") strings.whereMoneyCameFrom else strings.categoryLabel,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = colors.textSecondary
                 )
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -106,29 +104,30 @@ fun EditTransactionDialog(
                 ) {
                     options.take(6).forEach { cat ->
                         val isSel = selectedCategory == cat
+                        val label = if (transaction.type == "INCOME") strings.sourceLabel(cat) else strings.categoryLabel(cat)
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(if (isSel) SoftMintContainer else SoftMintSurface)
-                                .border(1.dp, if (isSel) EmeraldBrand else SoftMintBorder, RoundedCornerShape(10.dp))
+                                .background(if (isSel) colors.softContainer else colors.softSurface)
+                                .border(1.dp, if (isSel) colors.accentPrimary else colors.softBorder, RoundedCornerShape(10.dp))
                                 .clickable { selectedCategory = cat }
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
-                                text = cat,
+                                text = label,
                                 fontSize = 11.sp,
                                 fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSel) ForestGreenDark else TextPrimary
+                                color = if (isSel) colors.accentText else colors.textPrimary
                             )
                         }
                     }
                 }
 
                 Text(
-                    text = "How was it paid?",
+                    text = strings.howWasItPaid,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = colors.textSecondary
                 )
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -140,16 +139,16 @@ fun EditTransactionDialog(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(if (isSel) EmeraldBrand else SoftMintSurface)
-                                .border(1.dp, if (isSel) EmeraldBrand else SoftMintBorder, RoundedCornerShape(10.dp))
+                                .background(if (isSel) EmeraldBrand else colors.softSurface)
+                                .border(1.dp, if (isSel) EmeraldBrand else colors.softBorder, RoundedCornerShape(10.dp))
                                 .clickable { selectedPaymentMethod = method }
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
-                                text = method,
+                                text = strings.paymentLabel(method),
                                 fontSize = 11.sp,
                                 fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSel) Color.White else TextPrimary
+                                color = if (isSel) Color.White else colors.textPrimary
                             )
                         }
                     }
@@ -158,7 +157,7 @@ fun EditTransactionDialog(
                 OutlinedTextField(
                     value = notesText,
                     onValueChange = { notesText = it },
-                    label = { Text("Extra note") },
+                    label = { Text(strings.extraNoteLabel) },
                     maxLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp)
@@ -185,19 +184,19 @@ fun EditTransactionDialog(
                     contentColor = Color.White
                 )
             ) {
-                Text("Save")
+                Text(strings.save)
             }
         },
         dismissButton = {
             Row {
                 TextButton(
                     onClick = { onDelete(transaction.id) },
-                    colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFDC2626))
+                    colors = ButtonDefaults.textButtonColors(contentColor = colors.expenseRed)
                 ) {
-                    Text("Delete")
+                    Text(strings.delete)
                 }
                 TextButton(onClick = onDismiss) {
-                    Text("Cancel")
+                    Text(strings.cancel)
                 }
             }
         }
