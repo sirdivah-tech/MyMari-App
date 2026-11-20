@@ -1,0 +1,166 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Student profile, currency preferences, starting balance, and daily reminder settings.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the owner." },
+        "fullName": { "type": "string", "description": "Student display name." },
+        "email": { "type": "string", "description": "Student email address." },
+        "university": { "type": "string", "description": "University or college name." },
+        "preferredCurrency": { "type": "string", "description": "Currency code (e.g. USD, ZiG)." },
+        "currencySymbol": { "type": "string", "description": "Currency symbol (e.g. $, ZiG )." },
+        "startingBalance": { "type": "number", "description": "Initial wallet money available." },
+        "monthlyBudgetTarget": { "type": "number", "description": "Monthly spending limit." },
+        "morningReminderEnabled": { "type": "boolean", "description": "Whether morning reminder is on." },
+        "morningReminderTime": { "type": "string", "description": "Morning reminder HH:mm." },
+        "eveningReminderEnabled": { "type": "boolean", "description": "Whether evening reminder is on." },
+        "eveningReminderTime": { "type": "string", "description": "Evening reminder HH:mm." },
+        "hasCompletedOnboarding": { "type": "boolean", "description": "Whether welcome setup is complete." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update (FieldValue.serverTimestamp())." }
+      },
+      "required": [
+        "userId",
+        "fullName",
+        "preferredCurrency",
+        "currencySymbol",
+        "startingBalance",
+        "monthlyBudgetTarget",
+        "morningReminderEnabled",
+        "morningReminderTime",
+        "eveningReminderEnabled",
+        "eveningReminderTime",
+        "hasCompletedOnboarding",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TransactionRecord": {
+      "title": "TransactionRecord",
+      "description": "An income (money in) or expense (money out) entry recorded by a student.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["INCOME", "EXPENSE"] },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "source": { "type": "string" },
+        "description": { "type": "string" },
+        "notes": { "type": "string" },
+        "dateString": { "type": "string" },
+        "timeString": { "type": "string" },
+        "currency": { "type": "string" },
+        "clientTimestamp": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "type",
+        "amount",
+        "category",
+        "paymentMethod",
+        "dateString",
+        "timeString",
+        "currency",
+        "clientTimestamp",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BudgetRecord": {
+      "title": "BudgetRecord",
+      "description": "A spending limit for a category or period.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "period": { "type": "string", "enum": ["MONTHLY", "WEEKLY"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "amount", "period", "createdAt", "updatedAt"]
+    },
+    "SavingsGoalRecord": {
+      "title": "SavingsGoalRecord",
+      "description": "A student savings goal such as Emergency Fund or Laptop.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "targetAmount": { "type": "number" },
+        "currentAmount": { "type": "number" },
+        "categoryIcon": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "name",
+        "targetAmount",
+        "currentAmount",
+        "categoryIcon",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SavingsContributionRecord": {
+      "title": "SavingsContributionRecord",
+      "description": "A deposit added toward a student savings goal.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "goalId": { "type": "string" },
+        "amount": { "type": "number" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "goalId", "amount", "createdAt"]
+    },
+    "DailyNoteRecord": {
+      "title": "DailyNoteRecord",
+      "description": "Personal daily money diary note keyed by yyyy-MM-dd.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "dateString": { "type": "string" },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "dateString", "note", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private profile and settings owned by userId."
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/TransactionRecord" },
+      "description": "User-scoped income and expense entries."
+    },
+    "/users/{userId}/budgets/{budgetId}": {
+      "schema": { "$ref": "#/entities/BudgetRecord" },
+      "description": "User-scoped spending limits."
+    },
+    "/users/{userId}/savingsGoals/{goalId}": {
+      "schema": { "$ref": "#/entities/SavingsGoalRecord" },
+      "description": "User-scoped savings goals."
+    },
+    "/users/{userId}/savingsGoals/{goalId}/contributions/{contributionId}": {
+      "schema": { "$ref": "#/entities/SavingsContributionRecord" },
+      "description": "Deposits added to a specific savings goal."
+    },
+    "/users/{userId}/dailyNotes/{dateString}": {
+      "schema": { "$ref": "#/entities/DailyNoteRecord" },
+      "description": "Daily money diary notes for a specific date."
+    }
+  }
+}

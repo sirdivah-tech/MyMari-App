@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,10 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,9 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.AlertOrange
 import com.example.ui.theme.ForestGreenDark
-import com.example.ui.theme.NeonLime
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.SoftMintBorder
+import com.example.ui.theme.SoftMintContainer
+import com.example.ui.theme.SoftMintSurface
 
 @Composable
 fun HeaderBar(
@@ -51,68 +50,58 @@ fun HeaderBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Left: Avatar + Greeting
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.clickable { onProfileClick() }
         ) {
             Box(
                 modifier = Modifier
-                    .size(46.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFE2E8F0)),
+                    .background(SoftMintContainer)
+                    .border(1.dp, SoftMintBorder, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                // Stylish avatar representation
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(ForestGreenDark),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (userName.isNotBlank()) userName.take(1).uppercase() else "M",
-                        color = NeonLime,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                Text(
+                    text = if (userName.isNotBlank()) userName.take(1).uppercase() else "M",
+                    color = ForestGreenDark,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             Spacer(modifier = Modifier.width(12.dp))
 
             Column {
                 Text(
-                    text = "Hello $userName!",
+                    text = "Hi $userName!",
                     color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 19.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Manage your budget and expenses.",
+                    text = "Let's see how your money is doing today.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Normal
+                    fontSize = 12.sp
                 )
             }
         }
 
-        // Right: Search & Bell Buttons
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface)
+                    .background(SoftMintSurface)
+                    .border(1.dp, SoftMintBorder, CircleShape)
                     .clickable { onSearchClick() }
                     .testTag("header_search_button"),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Search,
-                    contentDescription = "Search transactions",
-                    tint = MaterialTheme.colorScheme.onBackground,
+                    contentDescription = "Search spending & income",
+                    tint = ForestGreenDark,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -121,18 +110,18 @@ fun HeaderBar(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface)
+                    .background(SoftMintSurface)
+                    .border(1.dp, SoftMintBorder, CircleShape)
                     .clickable { onNotificationClick() }
                     .testTag("header_bell_button"),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Notifications,
-                    contentDescription = "Notifications & Reminders",
-                    tint = MaterialTheme.colorScheme.onBackground,
+                    contentDescription = "Reminders & Settings",
+                    tint = ForestGreenDark,
                     modifier = Modifier.size(20.dp)
                 )
-                // Badge dot
                 Box(
                     modifier = Modifier
                         .size(8.dp)

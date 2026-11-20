@@ -1,12 +1,13 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,16 +23,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CallMade
+import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.filled.Insights
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -41,8 +38,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -52,12 +47,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.FinanceConstants
+import com.example.ui.DaySpending
 import com.example.ui.FinanceUiState
-import com.example.ui.Screen
+import com.example.ui.theme.CanvasBgLight
+import com.example.ui.theme.EmeraldBrand
+import com.example.ui.theme.EmeraldBright
 import com.example.ui.theme.ForestGreenDark
-import com.example.ui.theme.ForestGreenMedium
-import com.example.ui.theme.IncomeGreen
-import com.example.ui.theme.NeonLime
+import com.example.ui.theme.SoftMintBorder
+import com.example.ui.theme.SoftMintContainer
+import com.example.ui.theme.SoftMintSurface
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 import java.util.Locale
 
 @Composable
@@ -66,7 +66,7 @@ fun ReportsScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedTab by remember { mutableStateOf("EXPENSE") } // "INCOME" or "EXPENSE"
+    var selectedTab by remember { mutableStateOf("EXPENSE") }
     val currency = uiState.userProfile.currencySymbol
 
     val totalBalanceStr = String.format(Locale.US, "%,.2f", uiState.totalAvailableBalance)
@@ -76,10 +76,10 @@ fun ReportsScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(CanvasBgLight),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Top Bar: Back button, "Analytics", More options (matching reference)
+        // Top Bar
         item {
             Row(
                 modifier = Modifier
@@ -90,45 +90,33 @@ fun ReportsScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
+                        .size(48.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surface)
+                        .background(SoftMintSurface)
+                        .border(1.dp, SoftMintBorder, CircleShape)
                         .clickable { onBackClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onBackground,
+                        tint = TextPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
 
                 Text(
-                    text = "Analytics",
+                    text = "Where Money Went",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
+                    color = TextPrimary
                 )
 
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surface),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Options",
-                        tint = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                Spacer(modifier = Modifier.size(48.dp))
             }
         }
 
-        // Segmented Toggle Pill: [ Income | Expense ] (matching reference)
+        // Light Segmented Toggle Pill: [ Money In | Money Out ]
         item {
             Box(
                 modifier = Modifier
@@ -139,7 +127,8 @@ fun ReportsScreen(
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(26.dp))
-                        .background(ForestGreenDark)
+                        .background(SoftMintSurface)
+                        .border(1.dp, SoftMintBorder, RoundedCornerShape(26.dp))
                         .padding(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -149,41 +138,41 @@ fun ReportsScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(22.dp))
-                            .background(if (incomeSelected) NeonLime else Color.Transparent)
+                            .background(if (incomeSelected) EmeraldBrand else Color.Transparent)
                             .clickable { selectedTab = "INCOME" }
-                            .padding(horizontal = 28.dp, vertical = 8.dp)
+                            .padding(horizontal = 26.dp, vertical = 9.dp)
                             .testTag("tab_income"),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Income",
+                            text = "Money In",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (incomeSelected) ForestGreenDark else Color(0xFFD1D5DB)
+                            color = if (incomeSelected) Color.White else TextSecondary
                         )
                     }
 
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(22.dp))
-                            .background(if (expenseSelected) NeonLime else Color.Transparent)
+                            .background(if (expenseSelected) EmeraldBrand else Color.Transparent)
                             .clickable { selectedTab = "EXPENSE" }
-                            .padding(horizontal = 28.dp, vertical = 8.dp)
+                            .padding(horizontal = 26.dp, vertical = 9.dp)
                             .testTag("tab_expense"),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Expense",
+                            text = "Money Out",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (expenseSelected) ForestGreenDark else Color(0xFFD1D5DB)
+                            color = if (expenseSelected) Color.White else TextSecondary
                         )
                     }
                 }
             }
         }
 
-        // Total Balance Label & Big Amount (matching reference)
+        // Big Total Summary
         item {
             Column(
                 modifier = Modifier
@@ -192,9 +181,9 @@ fun ReportsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (selectedTab == "INCOME") "Total Monthly Income" else "Total Balance",
+                    text = if (selectedTab == "INCOME") "Money Received This Month" else "Money Left Right Now",
                     fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = TextSecondary,
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -202,17 +191,18 @@ fun ReportsScreen(
                     text = if (selectedTab == "INCOME") "$currency$totalIncomeStr" else "$currency$totalBalanceStr",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
+                    color = TextPrimary
                 )
             }
         }
 
-        // Emerald Chart Card with Days of Week Bars & High-day Tooltip (matching reference)
+        // Light Pastel Mint Chart Card
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = 20.dp)
+                    .border(1.dp, SoftMintBorder, RoundedCornerShape(26.dp)),
                 shape = RoundedCornerShape(26.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.Transparent)
             ) {
@@ -221,13 +211,12 @@ fun ReportsScreen(
                         .fillMaxWidth()
                         .background(
                             brush = Brush.verticalGradient(
-                                colors = listOf(ForestGreenMedium, ForestGreenDark)
+                                colors = listOf(SoftMintSurface, SoftMintContainer)
                             )
                         )
                         .padding(20.dp)
                 ) {
                     Column {
-                        // Header inside emerald card: "Total expenses $6282.20" with arrow
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -235,15 +224,15 @@ fun ReportsScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = if (selectedTab == "INCOME") "Total income" else "Total expenses",
+                                    text = if (selectedTab == "INCOME") "Total Money In" else "Spent This Month",
                                     fontSize = 12.sp,
-                                    color = Color(0xFFA7F3D0)
+                                    color = TextSecondary
                                 )
                                 Text(
                                     text = "$currency${if (selectedTab == "INCOME") totalIncomeStr else totalExpenseStr}",
                                     fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = ForestGreenDark
                                 )
                             }
 
@@ -251,13 +240,14 @@ fun ReportsScreen(
                                 modifier = Modifier
                                     .size(36.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0x2AFFFFFF)),
+                                    .background(Color.White)
+                                    .border(1.dp, SoftMintBorder, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.CallMade,
-                                    contentDescription = "Arrow",
-                                    tint = NeonLime,
+                                    imageVector = Icons.AutoMirrored.Filled.CallMade,
+                                    contentDescription = "Weekly summary",
+                                    tint = EmeraldBrand,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -265,7 +255,6 @@ fun ReportsScreen(
 
                         Spacer(modifier = Modifier.height(18.dp))
 
-                        // Weekly Bar Chart
                         WeeklySpendingBarChart(
                             days = uiState.weeklySpending,
                             currencySymbol = currency
@@ -275,7 +264,7 @@ fun ReportsScreen(
             }
         }
 
-        // "Upcoming Payments" / Planned Expenses (matching reference)
+        // Bills Coming Up
         item {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -286,40 +275,40 @@ fun ReportsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Upcoming Payments",
+                        text = "Bills Coming Up",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = TextPrimary
                     )
                     Text(
-                        text = "See All",
+                        text = "Monthly",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = EmeraldBrand
                     )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val upcomingBills = listOf(
-                    UpcomingPayment("Room Cottage Rent", "$80.00/m", Color(0xFFE11D48)),
-                    UpcomingPayment("Campus WiFi & Data", "$12.00/m", Color(0xFF0284C7)),
-                    UpcomingPayment("Electricity (ZESA)", "$15.00/m", Color(0xFFF59E0B)),
-                    UpcomingPayment("Semester Medical", "$10.00/m", Color(0xFF10B981))
+                    UpcomingPayment("Room Rent", "$80.00/m", Color(0xFFE11D48)),
+                    UpcomingPayment("WiFi & Data", "$12.00/m", Color(0xFF0284C7)),
+                    UpcomingPayment("Electricity", "$15.00/m", Color(0xFFF59E0B)),
+                    UpcomingPayment("Health / Meds", "$10.00/m", Color(0xFF10B981))
                 )
 
                 LazyRow(
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
+                    contentPadding = PaddingValues(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(upcomingBills) { bill ->
                         Card(
                             modifier = Modifier
-                                .width(130.dp)
-                                .height(120.dp),
+                                .width(132.dp)
+                                .height(118.dp)
+                                .border(1.dp, SoftMintBorder, RoundedCornerShape(20.dp)),
                             shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            colors = CardDefaults.cardColors(containerColor = Color.White)
                         ) {
                             Column(
                                 modifier = Modifier
@@ -331,7 +320,7 @@ fun ReportsScreen(
                                     modifier = Modifier
                                         .size(36.dp)
                                         .clip(CircleShape)
-                                        .background(bill.color.copy(alpha = 0.15f)),
+                                        .background(bill.color.copy(alpha = 0.14f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -347,14 +336,14 @@ fun ReportsScreen(
                                         text = bill.name,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurface,
+                                        color = TextSecondary,
                                         maxLines = 1
                                     )
                                     Text(
                                         text = bill.amount,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        color = TextPrimary
                                     )
                                 }
                             }
@@ -364,31 +353,31 @@ fun ReportsScreen(
             }
         }
 
-        // Category Breakdown (Donut Chart + Legend)
+        // Donut Spending Breakdown
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = 20.dp)
+                    .border(1.dp, SoftMintBorder, RoundedCornerShape(22.dp)),
                 shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
-                        text = "Category Breakdown",
+                        text = "What You Spent On",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = TextPrimary
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
 
                     if (uiState.categorySpendingMonth.isEmpty()) {
                         Text(
-                            text = "No category expense recorded this month yet.",
+                            text = "No spending added this month yet.",
                             fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = TextSecondary
                         )
                     } else {
                         DonutSpendingChart(
@@ -400,30 +389,30 @@ fun ReportsScreen(
             }
         }
 
-        // Real Calculated Financial Insights (as required: actual recorded numbers)
+        // Plain-language Money Tips
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = 20.dp)
+                    .border(1.dp, SoftMintBorder, RoundedCornerShape(22.dp)),
                 shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.Insights,
-                            contentDescription = "Insights",
-                            tint = ForestGreenDark,
+                            contentDescription = "Tips",
+                            tint = EmeraldBrand,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Financial Insights",
+                            text = "Simple Money Tips",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = TextPrimary
                         )
                     }
 
@@ -442,26 +431,25 @@ fun ReportsScreen(
 
                     if (lowestCategory != null && lowestCategory.key != topCategory?.key) {
                         InsightItem(
-                            text = "${lowestCategory.key} is currently your lowest spending category ($currency${String.format(Locale.US, "%,.2f", lowestCategory.value)})."
+                            text = "You spent the least on ${lowestCategory.key} ($currency${String.format(Locale.US, "%,.2f", lowestCategory.value)})."
                         )
                     }
 
                     InsightItem(
-                        text = "You have $currency${String.format(Locale.US, "%,.2f", uiState.monthlyBudgetRemaining)} remaining in your monthly budget."
+                        text = "You still have $currency${String.format(Locale.US, "%,.2f", uiState.monthlyBudgetRemaining)} left under this month's spending limit."
                     )
 
                     if (uiState.totalSaved > 0) {
                         InsightItem(
-                            text = "You have saved $currency${String.format(Locale.US, "%,.2f", uiState.totalSaved)} towards your future goals!"
+                            text = "Nice job! You put aside $currency${String.format(Locale.US, "%,.2f", uiState.totalSaved)} in your savings goals."
                         )
                     }
                 }
             }
         }
 
-        // Floating nav bar spacer
         item {
-            Spacer(modifier = Modifier.height(90.dp))
+            Spacer(modifier = Modifier.height(96.dp))
         }
     }
 }
@@ -479,13 +467,13 @@ private fun InsightItem(text: String) {
                 .padding(top = 6.dp)
                 .size(6.dp)
                 .clip(CircleShape)
-                .background(ForestGreenDark)
+                .background(EmeraldBrand)
         )
         Spacer(modifier = Modifier.width(10.dp))
         Text(
             text = text,
             fontSize = 13.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = TextSecondary,
             lineHeight = 18.sp
         )
     }
@@ -499,7 +487,7 @@ data class UpcomingPayment(
 
 @Composable
 fun WeeklySpendingBarChart(
-    days: List<com.example.ui.DaySpending>,
+    days: List<DaySpending>,
     currencySymbol: String
 ) {
     if (days.isEmpty()) return
@@ -508,7 +496,6 @@ fun WeeklySpendingBarChart(
     val highestDay = days.maxByOrNull { it.amount }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Tooltip above highest day
         if (highestDay != null && highestDay.amount > 0) {
             Row(
                 modifier = Modifier
@@ -520,10 +507,11 @@ fun WeeklySpendingBarChart(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color.White)
+                        .border(1.dp, SoftMintBorder, RoundedCornerShape(12.dp))
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = "$currencySymbol${String.format(Locale.US, "%,.0f", highestDay.amount)}",
+                        text = "Highest: $currencySymbol${String.format(Locale.US, "%,.0f", highestDay.amount)}",
                         color = ForestGreenDark,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
@@ -532,7 +520,6 @@ fun WeeklySpendingBarChart(
             }
         }
 
-        // Custom Canvas Bar Chart
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -542,31 +529,29 @@ fun WeeklySpendingBarChart(
         ) {
             days.forEach { day ->
                 val isPeak = day == highestDay && day.amount > 0
-                val ratio = (day.amount / maxAmount).toFloat().coerceIn(0.12f, 1f)
+                val ratio = (day.amount / maxAmount).toFloat().coerceIn(0.14f, 1f)
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.weight(1f)
                 ) {
-                    // Bar
                     Box(
                         modifier = Modifier
                             .width(18.dp)
                             .height((100 * ratio).dp)
                             .clip(RoundedCornerShape(10.dp))
                             .background(
-                                if (isPeak) NeonLime else Color(0x38FFFFFF)
+                                if (isPeak) EmeraldBrand else EmeraldBright.copy(alpha = 0.28f)
                             )
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Day label
                     Text(
                         text = day.dayLabel,
                         fontSize = 11.sp,
                         fontWeight = if (isPeak) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isPeak) NeonLime else Color(0xFFD1FAE5)
+                        color = if (isPeak) ForestGreenDark else TextSecondary
                     )
                 }
             }
@@ -586,7 +571,6 @@ fun DonutSpendingChart(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Canvas Donut
         Box(
             modifier = Modifier
                 .size(130.dp)
@@ -614,13 +598,12 @@ fun DonutSpendingChart(
                 text = "$currencySymbol${String.format(Locale.US, "%,.0f", total)}",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = TextPrimary
             )
         }
 
         Spacer(modifier = Modifier.width(14.dp))
 
-        // Legend
         Column(modifier = Modifier.weight(1f)) {
             entries.take(4).forEach { entry ->
                 val pct = ((entry.value / total) * 100).toInt()
@@ -644,7 +627,7 @@ fun DonutSpendingChart(
                         Text(
                             text = entry.key,
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = TextPrimary,
                             maxLines = 1
                         )
                     }
@@ -653,7 +636,7 @@ fun DonutSpendingChart(
                         text = "$pct%",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = TextSecondary
                     )
                 }
             }

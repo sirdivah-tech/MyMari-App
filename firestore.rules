@@ -1,0 +1,281 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 80 &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 120)) &&
+             (!('university' in data) || (data.university is string && data.university.size() <= 120)) &&
+             data.preferredCurrency is string && data.preferredCurrency.size() >= 1 && data.preferredCurrency.size() <= 10 &&
+             data.currencySymbol is string && data.currencySymbol.size() >= 1 && data.currencySymbol.size() <= 10 &&
+             (data.startingBalance is int || data.startingBalance is float) && data.startingBalance >= 0 &&
+             (data.monthlyBudgetTarget is int || data.monthlyBudgetTarget is float) && data.monthlyBudgetTarget > 0 &&
+             data.morningReminderEnabled is bool &&
+             data.morningReminderTime is string && data.morningReminderTime.size() >= 1 && data.morningReminderTime.size() <= 10 &&
+             data.eveningReminderEnabled is bool &&
+             data.eveningReminderTime is string && data.eveningReminderTime.size() >= 1 && data.eveningReminderTime.size() <= 10 &&
+             data.hasCompletedOnboarding is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidTransaction(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.type is string && (data.type == 'INCOME' || data.type == 'EXPENSE') &&
+             (data.amount is int || data.amount is float) && data.amount > 0 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 80 &&
+             data.paymentMethod is string && data.paymentMethod.size() >= 1 && data.paymentMethod.size() <= 50 &&
+             (!('source' in data) || (data.source is string && data.source.size() <= 80)) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 200)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 500)) &&
+             data.dateString is string && data.dateString.size() >= 8 && data.dateString.size() <= 20 &&
+             data.timeString is string && data.timeString.size() >= 4 && data.timeString.size() <= 10 &&
+             data.currency is string && data.currency.size() >= 1 && data.currency.size() <= 10 &&
+             data.clientTimestamp is int && data.clientTimestamp >= 0 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidBudget(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             (!('category' in data) || data.category == null || (data.category is string && data.category.size() <= 80)) &&
+             (data.amount is int || data.amount is float) && data.amount > 0 &&
+             data.period is string && (data.period == 'MONTHLY' || data.period == 'WEEKLY') &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidSavingsGoal(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             (data.targetAmount is int || data.targetAmount is float) && data.targetAmount > 0 &&
+             (data.currentAmount is int || data.currentAmount is float) && data.currentAmount >= 0 &&
+             data.categoryIcon is string && data.categoryIcon.size() >= 1 && data.categoryIcon.size() <= 40 &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 300)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidSavingsContribution(data, userId, goalId) {
+      return data.userId is string && data.userId == userId &&
+             data.goalId is string && data.goalId == goalId &&
+             (data.amount is int || data.amount is float) && data.amount > 0 &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 300)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidDailyNote(data, userId, dateString) {
+      return data.userId is string && data.userId == userId &&
+             data.dateString is string && data.dateString == dateString &&
+             data.note is string && data.note.size() <= 1000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // 1. User Profile Document
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'fullName', 'preferredCurrency', 'currencySymbol',
+                         'startingBalance', 'monthlyBudgetTarget',
+                         'morningReminderEnabled', 'morningReminderTime',
+                         'eveningReminderEnabled', 'eveningReminderTime',
+                         'hasCompletedOnboarding', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'fullName', 'email', 'university',
+                         'preferredCurrency', 'currencySymbol',
+                         'startingBalance', 'monthlyBudgetTarget',
+                         'morningReminderEnabled', 'morningReminderTime',
+                         'eveningReminderEnabled', 'eveningReminderTime',
+                         'hasCompletedOnboarding', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidUserProfile(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'fullName', 'email', 'university',
+                         'preferredCurrency', 'currencySymbol',
+                         'startingBalance', 'monthlyBudgetTarget',
+                         'morningReminderEnabled', 'morningReminderTime',
+                         'eveningReminderEnabled', 'eveningReminderTime',
+                         'hasCompletedOnboarding', 'updatedAt'
+                       ]);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      // 2. Transactions Subcollection
+      match /transactions/{transactionId} {
+        allow get: if isOwner(userId) && isValidId(transactionId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(transactionId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'type', 'amount', 'category', 'paymentMethod',
+                           'dateString', 'timeString', 'currency', 'clientTimestamp',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'type', 'amount', 'category', 'paymentMethod',
+                           'source', 'description', 'notes', 'dateString', 'timeString',
+                           'currency', 'clientTimestamp', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidTransaction(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(transactionId) &&
+                         isValidTransaction(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'type', 'amount', 'category', 'paymentMethod',
+                           'source', 'description', 'notes', 'dateString', 'timeString',
+                           'currency', 'clientTimestamp', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(transactionId);
+      }
+
+      // 3. Budgets Subcollection
+      match /budgets/{budgetId} {
+        allow get: if isOwner(userId) && isValidId(budgetId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(budgetId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'name', 'amount', 'period', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'name', 'category', 'amount', 'period', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidBudget(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(budgetId) &&
+                         isValidBudget(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'name', 'category', 'amount', 'period', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(budgetId);
+      }
+
+      // 4. Savings Goals Subcollection
+      match /savingsGoals/{goalId} {
+        allow get: if isOwner(userId) && isValidId(goalId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(goalId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'name', 'targetAmount', 'currentAmount',
+                           'categoryIcon', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'name', 'targetAmount', 'currentAmount',
+                           'categoryIcon', 'notes', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidSavingsGoal(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(goalId) &&
+                         isValidSavingsGoal(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'name', 'targetAmount', 'currentAmount',
+                           'categoryIcon', 'notes', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(goalId);
+
+        // 5. Savings Contributions Subcollection
+        match /contributions/{contributionId} {
+          allow get: if isOwner(userId) && isValidId(goalId) && isValidId(contributionId);
+          allow list: if isOwner(userId) && isValidId(goalId);
+
+          allow create: if isOwner(userId) &&
+                           isValidId(goalId) &&
+                           isValidId(contributionId) &&
+                           exists(/databases/$(database)/documents/users/$(userId)/savingsGoals/$(goalId)) &&
+                           incoming().keys().hasAll([
+                             'userId', 'goalId', 'amount', 'createdAt'
+                           ]) &&
+                           incoming().keys().hasOnly([
+                             'userId', 'goalId', 'amount', 'notes', 'createdAt'
+                           ]) &&
+                           isValidSavingsContribution(incoming(), userId, goalId);
+
+          allow update: if false;
+          allow delete: if isOwner(userId) && isValidId(goalId) && isValidId(contributionId);
+        }
+      }
+
+      // 6. Daily Notes Subcollection
+      match /dailyNotes/{dateString} {
+        allow get: if isOwner(userId) && isValidId(dateString);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(dateString) &&
+                         incoming().keys().hasAll([
+                           'userId', 'dateString', 'note', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'dateString', 'note', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidDailyNote(incoming(), userId, dateString);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(dateString) &&
+                         isValidDailyNote(incoming(), userId, dateString) &&
+                         incoming().userId == existing().userId &&
+                         incoming().dateString == existing().dateString &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'note', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(dateString);
+      }
+    }
+  }
+}

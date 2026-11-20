@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,17 +31,17 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.local.entity.TransactionEntity
 import com.example.data.model.FinanceConstants
-import com.example.ui.theme.ExpenseBg
-import com.example.ui.theme.ExpenseRed
-import com.example.ui.theme.IncomeBg
+import com.example.data.remote.TransactionDoc
 import com.example.ui.theme.IncomeGreen
+import com.example.ui.theme.SoftMintBorder
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 import java.util.Locale
 
 @Composable
 fun TransactionRow(
-    transaction: TransactionEntity,
+    transaction: TransactionDoc,
     currencySymbol: String,
     onClick: () -> Unit,
     onDeleteClick: (() -> Unit)? = null,
@@ -53,11 +54,12 @@ fun TransactionRow(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .border(1.dp, SoftMintBorder, RoundedCornerShape(18.dp))
             .clickable { onClick() }
             .testTag("tx_row_${transaction.id}"),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -66,23 +68,22 @@ fun TransactionRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Icon + Title + Meta
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
-                        .background(catColor.copy(alpha = 0.15f)),
+                        .background(catColor.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = FinanceConstants.getCategoryIcon(transaction.category),
                         contentDescription = transaction.category,
                         tint = catColor,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(21.dp)
                     )
                 }
 
@@ -93,35 +94,34 @@ fun TransactionRow(
                         text = transaction.description.ifBlank { transaction.category },
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = TextPrimary,
                         maxLines = 1
                     )
                     Text(
-                        text = "${transaction.paymentMethod} • ${transaction.dateString} ${transaction.timeString}",
+                        text = "${transaction.paymentMethod} • ${transaction.dateString} ${transaction.timeString}".trim(),
                         fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = TextSecondary,
                         maxLines = 1
                     )
                 }
             }
 
-            // Amount + optional delete button
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = if (isIncome) "+$currencySymbol$formattedAmount" else "-$currencySymbol$formattedAmount",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isIncome) IncomeGreen else MaterialTheme.colorScheme.onSurface
+                    color = if (isIncome) IncomeGreen else TextPrimary
                 )
 
                 if (onDeleteClick != null) {
                     IconButton(
                         onClick = onDeleteClick,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete transaction",
+                            contentDescription = "Delete record",
                             tint = Color(0xFFEF4444),
                             modifier = Modifier.size(18.dp)
                         )

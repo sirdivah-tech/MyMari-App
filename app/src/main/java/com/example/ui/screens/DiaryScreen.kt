@@ -1,10 +1,12 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,11 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Search
@@ -30,7 +29,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,16 +41,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.local.entity.TransactionEntity
-import com.example.data.model.FinanceConstants
+import com.example.data.remote.TransactionDoc
 import com.example.ui.FinanceUiState
 import com.example.ui.components.TransactionRow
+import com.example.ui.components.VoiceTranscribeBar
+import com.example.ui.theme.CanvasBgLight
+import com.example.ui.theme.EmeraldBrand
 import com.example.ui.theme.ForestGreenDark
 import com.example.ui.theme.IncomeGreen
-import com.example.ui.theme.NeonLime
+import com.example.ui.theme.SoftMintBorder
+import com.example.ui.theme.SoftMintContainer
+import com.example.ui.theme.SoftMintSurface
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -63,12 +69,13 @@ fun DiaryScreen(
     uiState: FinanceUiState,
     onDateSelected: (String) -> Unit,
     onSaveNote: (String) -> Unit,
+    onVoiceDiaryAudio: (ByteArray) -> Unit,
     onSearchChange: (String) -> Unit,
     onCategoryFilterChange: (String?) -> Unit,
     onPaymentMethodFilterChange: (String?) -> Unit,
     onTypeFilterChange: (String) -> Unit,
-    onTransactionClick: (TransactionEntity) -> Unit,
-    onDeleteTransaction: (Long) -> Unit,
+    onTransactionClick: (TransactionDoc) -> Unit,
+    onDeleteTransaction: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val currency = uiState.userProfile.currencySymbol
@@ -76,10 +83,11 @@ fun DiaryScreen(
     val sdfDayName = SimpleDateFormat("EEEE, d MMMM", Locale.getDefault())
     val sdfShort = SimpleDateFormat("EEE\ndd", Locale.getDefault())
 
-    var noteText by remember(uiState.currentDailyNote) { mutableStateOf(uiState.currentDailyNote) }
+    var noteText by remember(uiState.selectedDate, uiState.currentDailyNote) {
+        mutableStateOf(uiState.currentDailyNote)
+    }
     var isEditingNote by remember { mutableStateOf(false) }
 
-    // Selected date parse
     val cal = Calendar.getInstance()
     try {
         val parsed = sdfDate.parse(uiState.selectedDate)
@@ -88,16 +96,15 @@ fun DiaryScreen(
 
     val fullDateHeader = sdfDayName.format(cal.time)
 
-    // Daily totals for the selected date
     val dayTransactions = uiState.selectedDateTransactions
     val dayIncome = dayTransactions.filter { it.type == "INCOME" }.sumOf { it.amount }
     val dayExpense = dayTransactions.filter { it.type == "EXPENSE" }.sumOf { it.amount }
-    val netChange = dayIncome - dayExpense
+    val dayDifference = dayIncome - dayExpense
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(CanvasBgLight),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Title Header
@@ -105,18 +112,18 @@ fun DiaryScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .padding(horizontal = 20.dp, vertical = 10.dp)
             ) {
                 Text(
                     text = "My Money Diary",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
+                    color = TextPrimary
                 )
                 Text(
-                    text = "Your daily personal financial journal",
+                    text = "See what you got and spent each day",
                     fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = TextSecondary
                 )
             }
         }
@@ -125,7 +132,6 @@ fun DiaryScreen(
         item {
             val dateList = remember {
                 val list = mutableListOf<Date>()
-                val dCal = Calendar.getInstance()
                 for (i in 0 downTo -13) {
                     val c = Calendar.getInstance()
                     c.add(Calendar.DAY_OF_YEAR, i)
@@ -135,7 +141,7 @@ fun DiaryScreen(
             }
 
             LazyRow(
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(dateList) { date ->
@@ -145,8 +151,11 @@ fun DiaryScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(16.dp))
-                            .background(
-                                if (isSelected) ForestGreenDark else MaterialTheme.colorScheme.surface
+                            .background(if (isSelected) EmeraldBrand else SoftMintSurface)
+                            .border(
+                                1.dp,
+                                if (isSelected) EmeraldBrand else SoftMintBorder,
+                                RoundedCornerShape(16.dp)
                             )
                             .clickable { onDateSelected(dStr) }
                             .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -156,8 +165,8 @@ fun DiaryScreen(
                             text = sdfShort.format(date),
                             fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) NeonLime else MaterialTheme.colorScheme.onSurface,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            color = if (isSelected) Color.White else TextPrimary,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
@@ -169,17 +178,18 @@ fun DiaryScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = 20.dp)
+                    .border(1.dp, SoftMintBorder, RoundedCornerShape(22.dp)),
                 shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
                         text = fullDateHeader,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = TextPrimary
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -190,9 +200,9 @@ fun DiaryScreen(
                     ) {
                         Column {
                             Text(
-                                text = "Daily Income",
+                                text = "Money In",
                                 fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = TextSecondary
                             )
                             Text(
                                 text = "+$currency${String.format(Locale.US, "%,.2f", dayIncome)}",
@@ -204,29 +214,29 @@ fun DiaryScreen(
 
                         Column {
                             Text(
-                                text = "Daily Total Spent",
+                                text = "Money Out",
                                 fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = TextSecondary
                             )
                             Text(
                                 text = "-$currency${String.format(Locale.US, "%,.2f", dayExpense)}",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (dayExpense > 0) Color(0xFFDC2626) else MaterialTheme.colorScheme.onSurface
+                                color = if (dayExpense > 0) Color(0xFFDC2626) else TextPrimary
                             )
                         }
 
                         Column {
                             Text(
-                                text = "Net Daily Change",
+                                text = "Today's Difference",
                                 fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = TextSecondary
                             )
                             Text(
-                                text = "${if (netChange >= 0) "+" else ""}$currency${String.format(Locale.US, "%,.2f", netChange)}",
+                                text = "${if (dayDifference >= 0) "+" else ""}$currency${String.format(Locale.US, "%,.2f", dayDifference)}",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (netChange >= 0) IncomeGreen else Color.Red
+                                color = if (dayDifference >= 0) IncomeGreen else Color(0xFFDC2626)
                             )
                         }
                     }
@@ -234,14 +244,15 @@ fun DiaryScreen(
             }
         }
 
-        // Personal Diary Note for this day
+        // Personal Diary Note + Speak with Voice AI
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = 20.dp)
+                    .border(1.dp, SoftMintBorder, RoundedCornerShape(20.dp)),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                colors = CardDefaults.cardColors(containerColor = SoftMintSurface)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -258,18 +269,18 @@ fun DiaryScreen(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Today's Money Diary Note",
+                                text = "Today's Story Note",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = TextPrimary
                             )
                         }
 
                         Text(
-                            text = if (isEditingNote) "Done" else "Edit",
+                            text = if (isEditingNote) "Done" else "Type Note",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = EmeraldBrand,
                             modifier = Modifier.clickable {
                                 if (isEditingNote) {
                                     onSaveNote(noteText)
@@ -279,13 +290,23 @@ fun DiaryScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    VoiceTranscribeBar(
+                        isTranscribing = uiState.isTranscribing,
+                        transcriptText = uiState.voiceTranscript,
+                        errorMessage = uiState.voiceError,
+                        promptHint = "Tap mic to speak your diary note for today",
+                        onAudioCaptured = onVoiceDiaryAudio
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     if (isEditingNote) {
                         OutlinedTextField(
                             value = noteText,
                             onValueChange = { noteText = it },
-                            placeholder = { Text("e.g. Bought extra groceries because I ran out of cooking oil.") },
+                            placeholder = { Text("e.g. Shared groceries with my roommate today.") },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("diary_note_input"),
@@ -299,19 +320,19 @@ fun DiaryScreen(
                                 isEditingNote = false
                             },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = ForestGreenDark,
-                                contentColor = NeonLime
+                                containerColor = EmeraldBrand,
+                                contentColor = Color.White
                             ),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Save Diary Note", fontSize = 12.sp)
+                            Text("Save Note", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     } else {
                         Text(
-                            text = if (noteText.isNotBlank()) noteText else "No notes added for this date. Tap 'Edit' to record your thoughts or context behind today's spending.",
+                            text = if (noteText.isNotBlank()) noteText else "No note written for this day yet. Speak above or tap 'Type Note' to remember why you spent today.",
                             fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontStyle = if (noteText.isBlank()) androidx.compose.ui.text.font.FontStyle.Italic else androidx.compose.ui.text.font.FontStyle.Normal,
+                            color = TextSecondary,
+                            fontStyle = if (noteText.isBlank()) FontStyle.Italic else FontStyle.Normal,
                             lineHeight = 18.sp
                         )
                     }
@@ -329,12 +350,12 @@ fun DiaryScreen(
                 OutlinedTextField(
                     value = uiState.searchQuery,
                     onValueChange = onSearchChange,
-                    placeholder = { Text("Search by description, category, payment...") },
+                    placeholder = { Text("Search food, Mukuru, EcoCash, rent...") },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Search",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = TextSecondary
                         )
                     },
                     trailingIcon = {
@@ -343,7 +364,7 @@ fun DiaryScreen(
                                 Icon(
                                     imageVector = Icons.Default.Clear,
                                     contentDescription = "Clear",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    tint = TextSecondary
                                 )
                             }
                         }
@@ -357,7 +378,6 @@ fun DiaryScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Filter chips: All, Income, Expense
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -367,8 +387,11 @@ fun DiaryScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(
-                                    if (isSelected) ForestGreenDark else MaterialTheme.colorScheme.surfaceVariant
+                                .background(if (isSelected) EmeraldBrand else SoftMintSurface)
+                                .border(
+                                    1.dp,
+                                    if (isSelected) EmeraldBrand else SoftMintBorder,
+                                    RoundedCornerShape(14.dp)
                                 )
                                 .clickable { onTypeFilterChange(type) }
                                 .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -377,7 +400,7 @@ fun DiaryScreen(
                                 text = label,
                                 fontSize = 12.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) NeonLime else MaterialTheme.colorScheme.onSurface
+                                color = if (isSelected) Color.White else TextPrimary
                             )
                         }
                     }
@@ -385,7 +408,6 @@ fun DiaryScreen(
             }
         }
 
-        // Transactions List for this Date / Filtered
         val displayList = if (uiState.searchQuery.isNotBlank() || uiState.filterType != "ALL") {
             uiState.filteredTransactions
         } else {
@@ -394,10 +416,14 @@ fun DiaryScreen(
 
         item {
             Text(
-                text = if (uiState.searchQuery.isNotBlank()) "Search Results (${displayList.size})" else "Transactions for $fullDateHeader (${displayList.size})",
+                text = if (uiState.searchQuery.isNotBlank()) {
+                    "Found (${displayList.size})"
+                } else {
+                    "Records for $fullDateHeader (${displayList.size})"
+                },
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
+                color = TextPrimary,
                 modifier = Modifier.padding(horizontal = 22.dp)
             )
         }
@@ -407,9 +433,10 @@ fun DiaryScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
+                        .padding(horizontal = 20.dp)
+                        .border(1.dp, SoftMintBorder, RoundedCornerShape(18.dp)),
                     shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
                 ) {
                     Column(
                         modifier = Modifier
@@ -418,23 +445,23 @@ fun DiaryScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "No transactions found for this day",
+                            text = "No money records for this day",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = TextPrimary
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Use the buttons on Home to record money received or spent on this date.",
+                            text = "Go back to Home and tap 'I Spent' or 'Got Paid' to add one.",
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
             }
         } else {
-            items(displayList) { tx ->
+            items(displayList, key = { it.id }) { tx ->
                 Box(modifier = Modifier.padding(horizontal = 20.dp)) {
                     TransactionRow(
                         transaction = tx,
@@ -446,9 +473,8 @@ fun DiaryScreen(
             }
         }
 
-        // Floating nav bar spacer
         item {
-            Spacer(modifier = Modifier.height(90.dp))
+            Spacer(modifier = Modifier.height(96.dp))
         }
     }
 }

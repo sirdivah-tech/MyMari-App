@@ -1,22 +1,27 @@
 package com.example.ui
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.data.local.MyMariDatabase
-import com.example.data.local.entity.BudgetEntity
-import com.example.data.local.entity.SavingsGoalEntity
-import com.example.data.local.entity.TransactionEntity
-import com.example.data.local.entity.UserProfileEntity
-import com.example.data.model.FinanceConstants
+import com.example.data.ai.VoiceParsedTransaction
+import com.example.data.ai.VoiceTranscriptionRepository
 import com.example.data.model.QuickPreset
-import com.example.data.repository.MyMariRepository
-import com.example.reminder.NotificationHelper
-import com.example.reminder.ReminderScheduler
+import com.example.data.remote.BudgetDoc
+import com.example.data.remote.DailyNoteDoc
+import com.example.data.remote.FirestoreFinanceRepository
+import com.example.data.remote.SavingsGoalDoc
+import com.example.data.remote.TransactionDoc
+import com.example.data.remote.UserProfileDoc
+import com.google.firebase.firestore.FirebaseFirestoreException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -33,20 +38,21 @@ enum class Screen {
 }
 
 data class DaySpending(
-    val dayLabel: String, // "Mon", "Tue", etc.
+    val dayLabel: String,
     val dateString: String,
     val amount: Double,
     val isToday: Boolean
 )
 
 data class FinanceUiState(
-    val transactions: List<TransactionEntity> = emptyList(),
-    val filteredTransactions: List<TransactionEntity> = emptyList(),
-    val budgets: List<BudgetEntity> = emptyList(),
-    val savingsGoals: List<SavingsGoalEntity> = emptyList(),
-    val userProfile: UserProfileEntity = UserProfileEntity(),
+    val isProfileLoading: Boolean = true,
+    val transactions: List<TransactionDoc> = emptyList(),
+    val filteredTransactions: List<TransactionDoc> = emptyList(),
+    val budgets: List<BudgetDoc> = emptyList(),
+    val savingsGoals: List<SavingsGoalDoc> = emptyList(),
+    val userProfile: UserProfileDoc = UserProfileDoc(),
     val selectedDate: String = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
-    val selectedDateTransactions: List<TransactionEntity> = emptyList(),
+    val selectedDateTransactions: List<TransactionDoc> = emptyList(),
     val currentDailyNote: String = "",
     val totalAvailableBalance: Double = 0.0,
     val monthlyIncome: Double = 0.0,
@@ -60,18 +66,34 @@ data class FinanceUiState(
     val searchQuery: String = "",
     val filterCategory: String? = null,
     val filterPaymentMethod: String? = null,
-    val filterType: String = "ALL", // "ALL", "INCOME", "EXPENSE"
+    val filterType: String = "ALL",
     val showAddIncomeSheet: Boolean = false,
     val showAddExpenseSheet: Boolean = false,
-    val editingTransaction: TransactionEntity? = null,
+    val editingTransaction: TransactionDoc? = null,
     val showOnboarding: Boolean = false,
-    val showDemoDialog: Boolean = false,
-    val isLoading: Boolean = false
+    val isTranscribing: Boolean = false,
+    val voiceTranscript: String? = null,
+    val voiceParsedTransaction: VoiceParsedTransaction? = null,
+    val voiceError: String? = null,
+    val statusError: String? = null,
+    val budgetAlertMessage: String? = null
 )
 
-class FinanceViewModel(application: Application) : AndroidViewModel(application) {
+private sealed interface StreamState<out T> {
+    data object Loading : StreamState<Nothing>
+    data class Data<T>(val value: T) : StreamState<T>
+    data class Error(val message: String) : StreamState<Nothing>
+}
 
-    private val repository: MyMariRepository
+@OptIn(ExperimentalCoroutinesApi::class)
+class FinanceViewModel(
+    private val repository: FirestoreFinanceRepository,
+    private val voiceRepository: VoiceTranscriptionRepository,
+    private val currentUserId: String,
+    private val initialDisplayName: String,
+    private val initialEmail: String
+) : ViewModel() {
+
     private val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     private val sdfTime = SimpleDateFormat("HH:mm", Locale.getDefault())
 
@@ -83,53 +105,51 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
     private val _activeScreen = MutableStateFlow(Screen.HOME)
     private val _showAddIncomeSheet = MutableStateFlow(false)
     private val _showAddExpenseSheet = MutableStateFlow(false)
-    private val _editingTransaction = MutableStateFlow<TransactionEntity?>(null)
-    private val _currentDailyNote = MutableStateFlow("")
+    private val _editingTransaction = MutableStateFlow<TransactionDoc?>(null)
 
-    init {
-        val db = MyMariDatabase.getDatabase(application)
-        repository = MyMariRepository(db.appDao())
+    private val _isTranscribing = MutableStateFlow(false)
+    private val _voiceTranscript = MutableStateFlow<String?>(null)
+    private val _voiceParsedTransaction = MutableStateFlow<VoiceParsedTransaction?>(null)
+    private val _voiceError = MutableStateFlow<String?>(null)
+    private val _statusError = MutableStateFlow<String?>(null)
+    private val _budgetAlertMessage = MutableStateFlow<String?>(null)
 
-        // Initial check for profile and schedule reminders
-        viewModelScope.launch {
-            val existing = repository.getUserProfileOnce()
-            if (existing != null) {
-                if (existing.morningReminderEnabled) {
-                    val parts = existing.morningReminderTime.split(":")
-                    if (parts.size == 2) {
-                        ReminderScheduler.scheduleDailyReminder(
-                            application,
-                            ReminderScheduler.TYPE_MORNING,
-                            parts[0].toIntOrNull() ?: 7,
-                            parts[1].toIntOrNull() ?: 30,
-                            true
-                        )
-                    }
-                }
-                if (existing.eveningReminderEnabled) {
-                    val parts = existing.eveningReminderTime.split(":")
-                    if (parts.size == 2) {
-                        ReminderScheduler.scheduleDailyReminder(
-                            application,
-                            ReminderScheduler.TYPE_EVENING,
-                            parts[0].toIntOrNull() ?: 20,
-                            parts[1].toIntOrNull() ?: 0,
-                            true
-                        )
-                    }
-                }
-            } else {
-                // Initialize default profile
-                repository.saveUserProfile(UserProfileEntity())
+    private fun <T> Flow<T>.toSafeStreamState(fallbackMessage: String): Flow<StreamState<T>> {
+        return this
+            .map<T, StreamState<T>> { StreamState.Data(it) }
+            .catch { error ->
+                val fsErr = generateSequence(error) { it.cause }
+                    .filterIsInstance<FirebaseFirestoreException>()
+                    .firstOrNull()
+                if (fsErr == null && error is CancellationException) throw error
+                val root = fsErr ?: error
+                emit(StreamState.Error(root.message ?: fallbackMessage))
             }
-        }
+    }
+
+    private val profileFlow = repository.observeUserProfile(currentUserId)
+        .toSafeStreamState("Failed to load profile")
+
+    private val transactionsFlow = repository.observeTransactions(currentUserId)
+        .toSafeStreamState("Failed to load money records")
+
+    private val budgetsFlow = repository.observeBudgets(currentUserId)
+        .toSafeStreamState("Failed to load spending limits")
+
+    private val savingsFlow = repository.observeSavingsGoals(currentUserId)
+        .toSafeStreamState("Failed to load savings goals")
+
+    private val dailyNoteFlow = _selectedDate.flatMapLatest { date ->
+        repository.observeDailyNote(currentUserId, date)
+            .toSafeStreamState("Failed to load diary note")
     }
 
     val uiState: StateFlow<FinanceUiState> = combine(
-        repository.allTransactions,
-        repository.allBudgets,
-        repository.allSavingsGoals,
-        repository.userProfile,
+        profileFlow,
+        transactionsFlow,
+        budgetsFlow,
+        savingsFlow,
+        dailyNoteFlow,
         _selectedDate,
         _searchQuery,
         _filterCategory,
@@ -139,27 +159,60 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         _showAddIncomeSheet,
         _showAddExpenseSheet,
         _editingTransaction,
-        _currentDailyNote
+        _isTranscribing,
+        _voiceTranscript,
+        _voiceParsedTransaction,
+        _voiceError,
+        _statusError,
+        _budgetAlertMessage
     ) { args: Array<Any?> ->
         @Suppress("UNCHECKED_CAST")
-        val transactions = args[0] as? List<TransactionEntity> ?: emptyList()
+        val profileState = args[0] as StreamState<UserProfileDoc?>
         @Suppress("UNCHECKED_CAST")
-        val budgets = args[1] as? List<BudgetEntity> ?: emptyList()
+        val txState = args[1] as StreamState<List<TransactionDoc>>
         @Suppress("UNCHECKED_CAST")
-        val savings = args[2] as? List<SavingsGoalEntity> ?: emptyList()
-        val profile = args[3] as? UserProfileEntity ?: UserProfileEntity()
-        val selectedDate = args[4] as? String ?: sdfDate.format(Date())
-        val search = args[5] as? String ?: ""
-        val filterCat = args[6] as? String
-        val filterPay = args[7] as? String
-        val filterType = args[8] as? String ?: "ALL"
-        val activeScreen = args[9] as? Screen ?: Screen.HOME
-        val showAddInc = args[10] as? Boolean ?: false
-        val showAddExp = args[11] as? Boolean ?: false
-        val editingTx = args[12] as? TransactionEntity
-        val dailyNote = args[13] as? String ?: ""
+        val budgetsState = args[2] as StreamState<List<BudgetDoc>>
+        @Suppress("UNCHECKED_CAST")
+        val savingsState = args[3] as StreamState<List<SavingsGoalDoc>>
+        @Suppress("UNCHECKED_CAST")
+        val noteState = args[4] as StreamState<DailyNoteDoc?>
 
-        // Date calculations
+        val selectedDate = args[5] as String
+        val search = args[6] as String
+        val filterCat = args[7] as String?
+        val filterPay = args[8] as String?
+        val filterType = args[9] as String
+        val activeScreen = args[10] as Screen
+        val showAddInc = args[11] as Boolean
+        val showAddExp = args[12] as Boolean
+        val editingTx = args[13] as TransactionDoc?
+        val isTranscribing = args[14] as Boolean
+        val voiceTranscript = args[15] as String?
+        val voiceParsed = args[16] as VoiceParsedTransaction?
+        val voiceError = args[17] as String?
+        val statusError = args[18] as String?
+        val budgetAlert = args[19] as String?
+
+        val isProfileLoading = profileState is StreamState.Loading
+        val profile = (profileState as? StreamState.Data)?.value ?: UserProfileDoc(
+            userId = currentUserId,
+            fullName = initialDisplayName.ifBlank { "Student" },
+            email = initialEmail
+        )
+        val showOnboarding = profileState is StreamState.Data && (profileState.value == null || !profileState.value.hasCompletedOnboarding)
+
+        val transactions = (txState as? StreamState.Data)?.value ?: emptyList()
+        val budgets = (budgetsState as? StreamState.Data)?.value ?: emptyList()
+        val savings = (savingsState as? StreamState.Data)?.value ?: emptyList()
+        val dailyNote = (noteState as? StreamState.Data)?.value?.note ?: ""
+
+        val streamError = listOfNotNull(
+            (profileState as? StreamState.Error)?.message,
+            (txState as? StreamState.Error)?.message,
+            (budgetsState as? StreamState.Error)?.message,
+            (savingsState as? StreamState.Error)?.message
+        ).firstOrNull()
+
         val cal = Calendar.getInstance()
         val currentMonth = cal.get(Calendar.MONTH)
         val currentYear = cal.get(Calendar.YEAR)
@@ -169,7 +222,6 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         var monthIncome = 0.0
         var monthExpense = 0.0
         val catMap = mutableMapOf<String, Double>()
-
         val txCalendar = Calendar.getInstance()
 
         transactions.forEach { t ->
@@ -179,11 +231,10 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
                 totalExpense += t.amount
             }
 
-            txCalendar.timeInMillis = t.timestamp
-            val txMonth = txCalendar.get(Calendar.MONTH)
-            val txYear = txCalendar.get(Calendar.YEAR)
-
-            if (txMonth == currentMonth && txYear == currentYear) {
+            txCalendar.timeInMillis = t.clientTimestamp
+            if (txCalendar.get(Calendar.MONTH) == currentMonth &&
+                txCalendar.get(Calendar.YEAR) == currentYear
+            ) {
                 if (t.type == "INCOME") {
                     monthIncome += t.amount
                 } else {
@@ -195,15 +246,13 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
 
         val totalSaved = savings.sumOf { it.currentAmount }
         val availableBalance = profile.startingBalance + totalIncome - totalExpense - totalSaved
-        val monthlyBudget = if (profile.monthlyBudgetTarget > 0) profile.monthlyBudgetTarget else 300.0
-        val remainingBudget = monthlyBudget - monthExpense
-        val budgetPct = if (monthlyBudget > 0) ((monthExpense / monthlyBudget).toFloat()).coerceIn(0f, 2f) else 0f
+        val monthlyLimit = if (profile.monthlyBudgetTarget > 0) profile.monthlyBudgetTarget else 300.0
+        val remainingLimit = monthlyLimit - monthExpense
+        val budgetPct = if (monthlyLimit > 0) ((monthExpense / monthlyLimit).toFloat()).coerceIn(0f, 2f) else 0f
 
-        // Weekly spending breakdown (past 7 days for the chart)
         val weeklySpending = mutableListOf<DaySpending>()
         val dayFormatter = SimpleDateFormat("EEE", Locale.getDefault())
         val todayStr = sdfDate.format(Date())
-
         for (i in 6 downTo 0) {
             val dCal = Calendar.getInstance()
             dCal.add(Calendar.DAY_OF_YEAR, -i)
@@ -220,7 +269,6 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
             )
         }
 
-        // Filtered transactions for list / search
         val filtered = transactions.filter { t ->
             val matchesSearch = if (search.isBlank()) true else {
                 t.description.contains(search, ignoreCase = true) ||
@@ -238,10 +286,10 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
             matchesSearch && matchesCat && matchesPay && matchesType
         }
 
-        // Transactions for selected date in Diary
         val dateTransactions = transactions.filter { it.dateString == selectedDate }
 
         FinanceUiState(
+            isProfileLoading = isProfileLoading,
             transactions = transactions,
             filteredTransactions = filtered,
             budgets = budgets,
@@ -253,7 +301,7 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
             totalAvailableBalance = availableBalance,
             monthlyIncome = monthIncome,
             monthlyExpense = monthExpense,
-            monthlyBudgetRemaining = remainingBudget,
+            monthlyBudgetRemaining = remainingLimit,
             monthlyBudgetPercentage = budgetPct,
             totalSaved = totalSaved,
             categorySpendingMonth = catMap,
@@ -266,11 +314,17 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
             showAddIncomeSheet = showAddInc,
             showAddExpenseSheet = showAddExp,
             editingTransaction = editingTx,
-            showOnboarding = !profile.hasCompletedOnboarding
+            showOnboarding = showOnboarding,
+            isTranscribing = isTranscribing,
+            voiceTranscript = voiceTranscript,
+            voiceParsedTransaction = voiceParsed,
+            voiceError = voiceError,
+            statusError = statusError ?: streamError,
+            budgetAlertMessage = budgetAlert
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.WhileSubscribed(5000L),
         initialValue = FinanceUiState()
     )
 
@@ -280,11 +334,6 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
 
     fun setSelectedDate(dateString: String) {
         _selectedDate.value = dateString
-        viewModelScope.launch {
-            repository.getDailyNote(dateString).collect { noteEntity ->
-                _currentDailyNote.value = noteEntity?.note ?: ""
-            }
-        }
     }
 
     fun setSearchQuery(query: String) {
@@ -303,16 +352,68 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         _filterType.value = type
     }
 
+    fun clearVoiceState() {
+        _voiceTranscript.value = null
+        _voiceParsedTransaction.value = null
+        _voiceError.value = null
+    }
+
+    fun clearStatusError() {
+        _statusError.value = null
+    }
+
+    fun clearBudgetAlert() {
+        _budgetAlertMessage.value = null
+    }
+
     fun showAddIncome(show: Boolean) {
+        if (show) clearVoiceState()
         _showAddIncomeSheet.value = show
     }
 
     fun showAddExpense(show: Boolean) {
+        if (show) clearVoiceState()
         _showAddExpenseSheet.value = show
     }
 
-    fun setEditingTransaction(tx: TransactionEntity?) {
+    fun setEditingTransaction(tx: TransactionDoc?) {
         _editingTransaction.value = tx
+    }
+
+    fun transcribeVoiceForTransaction(audioBytes: ByteArray, defaultType: String) {
+        viewModelScope.launch {
+            _isTranscribing.value = true
+            _voiceError.value = null
+            val result = voiceRepository.transcribeAndParseTransaction(
+                audioBytes = audioBytes,
+                mimeType = "audio/mp4",
+                defaultType = defaultType
+            )
+            _isTranscribing.value = false
+            result.onSuccess { parsed ->
+                _voiceTranscript.value = parsed.transcript
+                _voiceParsedTransaction.value = parsed
+            }.onFailure { err ->
+                _voiceError.value = err.message ?: "Could not transcribe voice recording."
+            }
+        }
+    }
+
+    fun transcribeVoiceForDiary(audioBytes: ByteArray) {
+        viewModelScope.launch {
+            _isTranscribing.value = true
+            _voiceError.value = null
+            val result = voiceRepository.transcribeAudio(audioBytes, "audio/mp4")
+            _isTranscribing.value = false
+            result.onSuccess { text ->
+                val existing = uiState.value.currentDailyNote
+                val combined = if (existing.isBlank()) text else "$existing\n$text"
+                saveDailyNote(combined)
+                _voiceTranscript.value = text
+            }.onFailure { err ->
+                _voiceError.value = err.message ?: "Could not transcribe voice note."
+            }
+        }
     }
 
     fun addIncome(
@@ -325,20 +426,27 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         time: String = sdfTime.format(Date())
     ) {
         viewModelScope.launch {
-            val tx = TransactionEntity(
+            val tx = TransactionDoc(
+                userId = currentUserId,
                 type = "INCOME",
                 amount = amount,
                 category = source,
                 paymentMethod = paymentMethod,
                 source = source,
-                description = description.ifBlank { "Income from $source" },
+                description = description.ifBlank { "Money from $source" },
                 notes = notes,
                 dateString = date,
                 timeString = time,
-                currency = uiState.value.userProfile.preferredCurrency
+                currency = uiState.value.userProfile.preferredCurrency,
+                clientTimestamp = System.currentTimeMillis()
             )
-            repository.addTransaction(tx)
-            _showAddIncomeSheet.value = false
+            val result = repository.addTransaction(currentUserId, tx)
+            result.onSuccess {
+                _showAddIncomeSheet.value = false
+                clearVoiceState()
+            }.onFailure {
+                _statusError.value = it.localizedMessage ?: "Failed to save income."
+            }
         }
     }
 
@@ -352,7 +460,8 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         time: String = sdfTime.format(Date())
     ) {
         viewModelScope.launch {
-            val tx = TransactionEntity(
+            val tx = TransactionDoc(
+                userId = currentUserId,
                 type = "EXPENSE",
                 amount = amount,
                 category = category,
@@ -361,13 +470,17 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
                 notes = notes,
                 dateString = date,
                 timeString = time,
-                currency = uiState.value.userProfile.preferredCurrency
+                currency = uiState.value.userProfile.preferredCurrency,
+                clientTimestamp = System.currentTimeMillis()
             )
-            repository.addTransaction(tx)
-            _showAddExpenseSheet.value = false
-
-            // Check budget thresholds for alerts
-            checkBudgetAlerts(category, amount)
+            val result = repository.addTransaction(currentUserId, tx)
+            result.onSuccess {
+                _showAddExpenseSheet.value = false
+                clearVoiceState()
+                checkBudgetAlertBanner(category, amount)
+            }.onFailure {
+                _statusError.value = it.localizedMessage ?: "Failed to save spending record."
+            }
         }
     }
 
@@ -381,44 +494,41 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         )
     }
 
-    fun updateTransaction(transaction: TransactionEntity) {
+    fun updateTransaction(transaction: TransactionDoc) {
         viewModelScope.launch {
-            repository.updateTransaction(transaction)
-            _editingTransaction.value = null
+            val result = repository.updateTransaction(currentUserId, transaction)
+            result.onSuccess {
+                _editingTransaction.value = null
+            }.onFailure {
+                _statusError.value = it.localizedMessage ?: "Failed to update record."
+            }
         }
     }
 
-    fun deleteTransaction(id: Long) {
+    fun deleteTransaction(id: String) {
         viewModelScope.launch {
-            repository.deleteTransaction(id)
-            if (_editingTransaction.value?.id == id) {
-                _editingTransaction.value = null
+            val result = repository.deleteTransaction(currentUserId, id)
+            result.onSuccess {
+                if (_editingTransaction.value?.id == id) {
+                    _editingTransaction.value = null
+                }
+            }.onFailure {
+                _statusError.value = it.localizedMessage ?: "Failed to delete record."
             }
         }
     }
 
     fun addBudget(name: String, category: String?, amount: Double, period: String = "MONTHLY") {
         viewModelScope.launch {
-            repository.addBudget(
-                BudgetEntity(
-                    name = name,
-                    category = category,
-                    amount = amount,
-                    period = period
-                )
-            )
+            repository.addBudget(currentUserId, name, category, amount, period)
+                .onFailure { _statusError.value = it.localizedMessage ?: "Failed to save spending limit." }
         }
     }
 
-    fun updateBudget(budget: BudgetEntity) {
+    fun deleteBudget(id: String) {
         viewModelScope.launch {
-            repository.updateBudget(budget)
-        }
-    }
-
-    fun deleteBudget(id: Long) {
-        viewModelScope.launch {
-            repository.deleteBudget(id)
+            repository.deleteBudget(currentUserId, id)
+                .onFailure { _statusError.value = it.localizedMessage ?: "Failed to remove spending limit." }
         }
     }
 
@@ -429,63 +539,36 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         notes: String = ""
     ) {
         viewModelScope.launch {
-            repository.addSavingsGoal(
-                SavingsGoalEntity(
-                    name = name,
-                    targetAmount = targetAmount,
-                    currentAmount = 0.0,
-                    categoryIcon = categoryIcon,
-                    notes = notes
-                )
-            )
+            repository.addSavingsGoal(currentUserId, name, targetAmount, categoryIcon, notes)
+                .onFailure { _statusError.value = it.localizedMessage ?: "Failed to create savings goal." }
         }
     }
 
-    fun contributeToSavings(goalId: Long, amount: Double, note: String = "") {
+    fun contributeToSavings(goalId: String, amount: Double, note: String = "") {
         viewModelScope.launch {
-            repository.contributeToSavingsGoal(goalId, amount, note)
+            repository.contributeToSavingsGoal(currentUserId, goalId, amount, note)
+                .onFailure { _statusError.value = it.localizedMessage ?: "Failed to add money to goal." }
         }
     }
 
-    fun deleteSavingsGoal(id: Long) {
+    fun deleteSavingsGoal(id: String) {
         viewModelScope.launch {
-            repository.deleteSavingsGoal(id)
+            repository.deleteSavingsGoal(currentUserId, id)
+                .onFailure { _statusError.value = it.localizedMessage ?: "Failed to delete savings goal." }
         }
     }
 
     fun saveDailyNote(note: String) {
         viewModelScope.launch {
-            val date = _selectedDate.value
-            repository.saveDailyNote(date, note)
-            _currentDailyNote.value = note
+            repository.saveDailyNote(currentUserId, _selectedDate.value, note)
+                .onFailure { _statusError.value = it.localizedMessage ?: "Failed to save note." }
         }
     }
 
-    fun saveProfile(profile: UserProfileEntity) {
+    fun saveProfile(profile: UserProfileDoc) {
         viewModelScope.launch {
-            repository.saveUserProfile(profile)
-            val app = getApplication<Application>()
-            // Reschedule reminders
-            val mParts = profile.morningReminderTime.split(":")
-            if (mParts.size == 2) {
-                ReminderScheduler.scheduleDailyReminder(
-                    app,
-                    ReminderScheduler.TYPE_MORNING,
-                    mParts[0].toIntOrNull() ?: 7,
-                    mParts[1].toIntOrNull() ?: 30,
-                    profile.morningReminderEnabled
-                )
-            }
-            val eParts = profile.eveningReminderTime.split(":")
-            if (eParts.size == 2) {
-                ReminderScheduler.scheduleDailyReminder(
-                    app,
-                    ReminderScheduler.TYPE_EVENING,
-                    eParts[0].toIntOrNull() ?: 20,
-                    eParts[1].toIntOrNull() ?: 0,
-                    profile.eveningReminderEnabled
-                )
-            }
+            repository.saveUserProfile(currentUserId, profile)
+                .onFailure { _statusError.value = it.localizedMessage ?: "Failed to save settings." }
         }
     }
 
@@ -500,10 +583,13 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
     ) {
         viewModelScope.launch {
             if (loadDemo) {
-                repository.loadRealisticDemoData()
+                repository.loadRealisticDemoData(currentUserId)
+                    .onFailure { _statusError.value = it.localizedMessage ?: "Failed to load demo data." }
             } else {
-                val updatedProfile = uiState.value.userProfile.copy(
-                    fullName = fullName.ifBlank { "Student" },
+                val updated = uiState.value.userProfile.copy(
+                    userId = currentUserId,
+                    fullName = fullName.ifBlank { initialDisplayName.ifBlank { "Student" } },
+                    email = initialEmail,
                     university = university.ifBlank { "University" },
                     preferredCurrency = preferredCurrency,
                     currencySymbol = currencySymbol,
@@ -511,78 +597,45 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
                     monthlyBudgetTarget = monthlyBudget,
                     hasCompletedOnboarding = true
                 )
-                repository.saveUserProfile(updatedProfile)
+                repository.saveUserProfile(currentUserId, updated)
+                    .onFailure { _statusError.value = it.localizedMessage ?: "Failed to save profile." }
             }
         }
     }
 
     fun loadDemoData() {
         viewModelScope.launch {
-            repository.loadRealisticDemoData()
+            repository.loadRealisticDemoData(currentUserId)
+                .onFailure { _statusError.value = it.localizedMessage ?: "Failed to load sample data." }
         }
     }
 
     fun clearAllData() {
         viewModelScope.launch {
-            repository.clearAllData()
-            val resetProfile = UserProfileEntity(
-                id = 1,
+            repository.clearAllData(currentUserId)
+            val resetProfile = uiState.value.userProfile.copy(
+                userId = currentUserId,
                 hasCompletedOnboarding = true,
                 startingBalance = 0.0,
                 monthlyBudgetTarget = 300.0
             )
-            repository.saveUserProfile(resetProfile)
-        }
-    }
-
-    fun testReminder(isMorning: Boolean) {
-        val app = getApplication<Application>()
-        if (isMorning) {
-            NotificationHelper.showNotification(
-                context = app,
-                notificationId = NotificationHelper.NOTIFICATION_ID_TEST,
-                title = "Good morning from MyMari!",
-                message = "Check your remaining balance and today's budget before you start your day."
-            )
-        } else {
-            NotificationHelper.showNotification(
-                context = app,
-                notificationId = NotificationHelper.NOTIFICATION_ID_TEST,
-                title = "Time for your MyMari check-in!",
-                message = "Have you recorded everything you spent or received today? Review your money before you sleep."
-            )
+            repository.saveUserProfile(currentUserId, resetProfile)
         }
     }
 
     fun exportCsv(): String {
-        val currency = uiState.value.userProfile.currencySymbol
-        return repository.exportTransactionsToCsv(uiState.value.transactions, currency)
+        return repository.exportTransactionsToCsv(uiState.value.transactions)
     }
 
-    private fun checkBudgetAlerts(category: String, addedAmount: Double) {
-        val budgets = uiState.value.budgets
-        val catBudget = budgets.find { it.category == category } ?: return
+    private fun checkBudgetAlertBanner(category: String, addedAmount: Double) {
+        val catBudget = uiState.value.budgets.find { it.category == category } ?: return
         val currentSpent = (uiState.value.categorySpendingMonth[category] ?: 0.0) + addedAmount
-        val ratio = currentSpent / catBudget.amount
+        val ratio = if (catBudget.amount > 0) currentSpent / catBudget.amount else 0.0
 
-        val app = getApplication<Application>()
         when {
-            ratio >= 1.0 -> {
-                NotificationHelper.showNotification(
-                    context = app,
-                    notificationId = NotificationHelper.NOTIFICATION_ID_BUDGET,
-                    title = "Budget Alert: $category reached 100%!",
-                    message = "You have spent all of your allocated ${catBudget.name} budget. Spend with care."
-                )
-            }
-            ratio >= 0.8 -> {
-                NotificationHelper.showNotification(
-                    context = app,
-                    notificationId = NotificationHelper.NOTIFICATION_ID_BUDGET,
-                    title = "Budget Alert: $category at 80%",
-                    message = "You have used 80% of your ${catBudget.name} budget. Keep an eye on remaining funds."
-                )
-            }
+            ratio >= 1.0 -> _budgetAlertMessage.value = "Heads up! You reached your limit for $category."
+            ratio >= 0.8 -> _budgetAlertMessage.value = "Careful: You used 80% of your $category limit."
+            ratio >= 0.5 -> _budgetAlertMessage.value = "Halfway check: 50% of your $category limit is used."
         }
     }
 }
